@@ -218,3 +218,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Project data: keep raw data files out of git (check data-sharing rules with the PI first)
+data/*
+!data/.gitkeep
