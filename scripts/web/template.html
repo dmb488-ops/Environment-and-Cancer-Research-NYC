@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NYC Environment & Cancer Explorer</title>
+<style>
+:root{
+  --bg:#f6f5f2; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#6f6d67; --line:#e2e0d9; --line2:#cfcdc4;
+  --accent:#184f95; --accent-soft:#e6eefa; --warn:#8a4b00; --warn-bg:#fff3de; --sel:#0b0b0b; --water:#eef2f6; --hair:#ffffff;
+  --coast:#b9b7ae; --shadow:0 1px 2px rgba(0,0,0,.06),0 4px 14px rgba(0,0,0,.06);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#10100f; --surface:#1a1a18; --ink:#f3f2ee; --ink2:#c3c1ba; --muted:#9a978f; --line:#2c2b28; --line2:#3d3c37;
+    --accent:#7fb0ee; --accent-soft:#1d2a3c; --warn:#f0b865; --warn-bg:#2d2415; --sel:#ffffff; --water:#16191c; --hair:#1a1a18;
+    --coast:#5d5b54; --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10100f; --surface:#1a1a18; --ink:#f3f2ee; --ink2:#c3c1ba; --muted:#9a978f; --line:#2c2b28; --line2:#3d3c37;
+  --accent:#7fb0ee; --accent-soft:#1d2a3c; --warn:#f0b865; --warn-bg:#2d2415; --sel:#ffffff; --water:#16191c; --hair:#1a1a18;
+  --coast:#5d5b54; --shadow:none;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+h1{font-size:20px;margin:0;letter-spacing:-.01em}
+h2{font-size:15px;margin:0 0 6px}
+h3{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:14px 0 6px;font-weight:600}
+button,select,input{font:inherit;color:inherit}
+header{padding:16px 20px 0;max-width:1400px;margin:0 auto}
+header .sub{color:var(--ink2);margin-top:2px}
+nav{display:flex;gap:4px;margin-top:14px;border-bottom:1px solid var(--line2);overflow-x:auto}
+nav button{background:none;border:0;border-bottom:3px solid transparent;padding:9px 14px;cursor:pointer;color:var(--ink2);white-space:nowrap;font-weight:600}
+nav button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+nav button:focus-visible,.btn:focus-visible,select:focus-visible,input:focus-visible,path.u:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+main{max-width:1400px;margin:0 auto;padding:16px 20px 40px}
+section.tab[hidden]{display:none}
+.row{display:flex;gap:16px;align-items:flex-start}
+.mapcol{flex:1 1 640px;min-width:0}
+.side{flex:0 0 370px;max-width:100%}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;box-shadow:var(--shadow)}
+.card + .card{margin-top:12px}
+.controls{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;margin-bottom:10px}
+.controls label{display:flex;gap:6px;align-items:center;color:var(--ink2)}
+select{background:var(--surface);border:1px solid var(--line2);border-radius:7px;padding:6px 8px;min-height:34px}
+.btn{background:var(--surface);border:1px solid var(--line2);border-radius:7px;padding:6px 12px;cursor:pointer;min-height:34px}
+.btn:hover{background:var(--accent-soft)}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.mapwrap{position:relative;background:var(--water);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.mapwrap svg{display:block;width:100%;height:auto;max-height:78vh}
+path.u{stroke:var(--hair);stroke-width:1.2;cursor:pointer;transition:fill .25s}
+path.u:hover{stroke:var(--ink);stroke-width:2}
+.coast{fill:none;stroke:var(--coast);stroke-width:1.6;pointer-events:none}
+.inner{fill:none;stroke:var(--hair);stroke-width:1.3;pointer-events:none;opacity:.9}
+.uhfline{fill:none;stroke:#7a3b8f;stroke-width:2.2;stroke-dasharray:9 6;pointer-events:none}
+.outl{fill:none;stroke:var(--accent);stroke-width:3.4;pointer-events:none;stroke-linejoin:round}
+:root[data-theme="dark"] .outl, :root:not([data-theme="light"]) .outl{}
+.selp{fill:none;stroke:var(--sel);stroke-width:4;pointer-events:none;stroke-linejoin:round}
+.blabel{font-size:30px;font-weight:700;letter-spacing:.14em;fill:var(--muted);pointer-events:none;opacity:.75}
+.tip{position:fixed;z-index:50;pointer-events:none;background:var(--ink);color:var(--bg);padding:6px 9px;border-radius:7px;font-size:12.5px;max-width:260px;box-shadow:0 4px 14px rgba(0,0,0,.25);display:none}
+.tip b{display:block}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:10px;align-items:center}
+.legend .sw{display:flex;align-items:center;gap:6px;color:var(--ink2);font-size:12.5px}
+.legend i{display:inline-block;width:22px;height:13px;border-radius:3px;border:1px solid rgba(0,0,0,.18)}
+.legend .nd i{background:repeating-linear-gradient(45deg,#cfcdc4 0 3px,#e9e7e0 3px 6px)}
+.ltitle{font-weight:600;margin-bottom:2px}
+.big{font-size:30px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.unit{color:var(--muted);font-size:12.5px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin:8px 0}
+.kv dt{color:var(--muted)} .kv dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+.tag{display:inline-block;font-size:11.5px;padding:1px 7px;border-radius:99px;background:var(--accent-soft);color:var(--accent);font-weight:600}
+.note{background:var(--warn-bg);color:var(--warn);border-radius:8px;padding:8px 10px;font-size:12.5px;margin:8px 0}
+.small{font-size:12.5px;color:var(--ink2)}
+.muted{color:var(--muted)}
+table{border-collapse:collapse;width:100%}
+th,td{padding:5px 9px;border-bottom:1px solid var(--line);text-align:left;font-variant-numeric:tabular-nums;vertical-align:top}
+th{position:sticky;top:0;background:var(--surface);cursor:pointer;white-space:nowrap;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink2);border-bottom:1px solid var(--line2)}
+td.n,th.n{text-align:right}
+tr.hl td{background:var(--accent-soft)}
+tbody tr.click{cursor:pointer}
+tbody tr.click:hover td{background:var(--accent-soft)}
+.tscroll{max-height:440px;overflow:auto;border:1px solid var(--line);border-radius:8px}
+details > summary{cursor:pointer;font-weight:600;padding:4px 0}
+.layerrow{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.layerrow:last-child{border-bottom:0}
+.layerrow .nm{font-weight:600}
+.layerrow .rg{grid-column:2/4;color:var(--muted);font-size:12px}
+.layerrow input[type=range]{width:90px}
+.chip{width:12px;height:12px;border-radius:3px;display:inline-block;margin-right:6px;vertical-align:-1px}
+.dgrid>*{min-width:0}
+.dgrid{display:grid;grid-template-columns:290px minmax(0,1fr);gap:16px;align-items:start}
+.flist{max-height:70vh;overflow:auto}
+.flist h4{margin:12px 0 4px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.flist button{display:block;width:100%;text-align:left;background:none;border:0;border-radius:6px;padding:5px 8px;cursor:pointer;color:var(--ink2)}
+.flist button:hover{background:var(--accent-soft)}
+.flist button[aria-current="true"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.flist .cnt{float:right;color:var(--muted);font-variant-numeric:tabular-nums}
+pre.ini{white-space:pre-wrap;font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;max-height:560px;overflow:auto;background:var(--bg);padding:10px;border-radius:8px;border:1px solid var(--line)}
+.spark{width:100%;height:auto;display:block}
+.spark text{fill:var(--muted);font-size:10px}
+.pager{display:flex;gap:8px;align-items:center;margin-top:8px}
+footer{max-width:1400px;margin:0 auto;padding:0 20px 30px;color:var(--muted);font-size:12.5px}
+.theme{float:right;margin-top:-30px}
+@media (max-width:900px){.row{flex-direction:column}.side{flex:1 1 auto;width:100%}.dgrid{grid-template-columns:1fr}.flist{max-height:240px}.theme{margin-top:0;float:none}}
+</style>
+</head>
+<body>
+<header>
+  <h1>NYC Environment &amp; Cancer Explorer</h1>
+  <div class="sub">How environmental and socioeconomic factors relate to cancer incidence across New York City neighborhoods &middot; research-group working tool</div>
+  <nav role="tablist" id="tabs">
+    <button role="tab" aria-selected="false" data-tab="data">1 &nbsp;Data browser</button>
+    <button role="tab" aria-selected="true" data-tab="cancer">2 &nbsp;Cancer incidence maps</button>
+    <button role="tab" aria-selected="false" data-tab="factors">3 &nbsp;Environment &amp; socioeconomic layers</button>
+  </nav>
+</header>
+<main>
+
+<!-- ============================================================ TAB 1 -->
+<section class="tab" id="tab-data" hidden>
+  <div class="card" style="margin-bottom:12px">
+    <details id="readme">
+      <summary>Read me first &mdash; what is in here and what to be careful about</summary>
+      <div class="small" style="margin-top:8px">
+        <p style="margin:6px 0">Every sheet of the three Excel workbooks and the smoking / health-insurance CSVs is listed on the left. Sheets that are exact duplicates of another sheet are marked and link to the original copy.</p>
+        <ul id="caveats" style="margin:6px 0 0 18px;padding:0"></ul>
+      </div>
+    </details>
+  </div>
+  <div class="dgrid">
+    <div class="card flist" id="flist"></div>
+    <div class="card" id="sheetview"></div>
+  </div>
+</section>
+
+<!-- ============================================================ TAB 2 -->
+<section class="tab" id="tab-cancer">
+  <div class="row">
+    <div class="mapcol">
+      <div class="controls">
+        <label>Map <select id="c-year" aria-label="Year"></select></label>
+        <button class="btn" id="c-prev" aria-label="Previous year">&larr;</button>
+        <button class="btn" id="c-next" aria-label="Next year">&rarr;</button>
+        <button class="btn" id="c-play">&#9654; Play</button>
+        <label>Cancer type <select id="c-set"></select></label>
+      </div>
+      <div class="mapwrap" id="c-map"></div>
+      <div class="legend" id="c-legend"></div>
+      <div class="small muted" style="margin-top:6px">Crude (not age-adjusted) rate per 100,000 residents. 55 workbook neighborhoods (PUMA-based). Click a neighborhood for details.</div>
+      <details style="margin-top:12px" class="card" open>
+        <summary>Table view &mdash; all 55 neighborhoods (click a row to select)</summary>
+        <div class="tscroll" style="margin-top:8px"><table id="c-table"></table></div>
+      </details>
+    </div>
+    <div class="side"><div class="card" id="c-info"></div></div>
+  </div>
+</section>
+
+<!-- ============================================================ TAB 3 -->
+<section class="tab" id="tab-factors" hidden>
+  <div class="row">
+    <div class="side" style="order:0">
+      <div class="card">
+        <h2>Layers</h2>
+        <div class="small muted" style="margin-bottom:4px">Switch layers on and off: with one layer the map shows its raw value; with two or more it shows a combined burden index (weighted mean of each layer's percentile rank across the 55 neighborhoods that year). Higher = worse.</div>
+        <div id="f-layers"></div>
+        <h3>Year</h3>
+        <div style="display:flex;gap:10px;align-items:center"><input type="range" id="f-year" style="flex:1"><b id="f-yearv" style="min-width:42px;text-align:right"></b></div>
+        <h3>Overlays</h3>
+        <label class="small" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="f-outl" checked> Outline the 20% highest-incidence neighborhoods</label>
+        <div style="margin:6px 0 0 24px"><select id="f-cset" aria-label="Cancer type for outline"></select></div>
+        <label class="small" style="display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox" id="f-uhf"> Show UHF34 boundaries (smoking &amp; insurance source areas)</label>
+      </div>
+      <div class="card" id="f-stats"></div>
+    </div>
+    <div class="mapcol" style="order:1">
+      <div class="mapwrap" id="f-map"></div>
+      <div class="legend" id="f-legend"></div>
+      <div id="f-warn"></div>
+    </div>
+    <div class="side" style="order:2"><div class="card" id="f-info"></div></div>
+  </div>
+</section>
+</main>
+<footer>
+  <div id="foot"></div>
+  <button class="btn theme" id="theme" aria-label="Toggle dark mode">Light / dark</button>
+</footer>
+<div class="tip" id="tip"></div>
+
+<script id="data" type="application/json">/*DATA*/</script>
+<script>
+"use strict";
+const D = JSON.parse(document.getElementById('data').textContent);
+const NS = 'http://www.w3.org/2000/svg';
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = (v, d = 1) => v == null ? '–' : Number(v).toLocaleString('en-US', {minimumFractionDigits: d, maximumFractionDigits: d});
+const YEARS = D.YEARS, N = 55;
+const BLUE = ["#cde2fb","#9ec5f4","#6da7ec","#3987e5","#256abf","#184f95","#0d366b"];
+const ORANGE = ["#fdebd3","#fbd0a1","#f6b06b","#ee8a3a","#d1661c","#a14a14","#6f330e"];
+const LAYERCOL = {smoke:'#8a5a2b', pov:'#c0392b', ins:'#2f6f8f'};
+let sel = null;                                  // shared selected unit id
+const store = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) {} return null; };
+
+/* ------------------------------------------------------------------ helpers */
+function classOf(v, br) { let c = 0; for (const b of br) if (v >= b) c++; return c; }
+function quantile(arr, q) { const a = arr.slice().sort((x, y) => x - y); const p = (a.length - 1) * q, i = Math.floor(p); return a[i] + (a[Math.min(i + 1, a.length - 1)] - a[i]) * (p - i); }
+function ranks(a) { // average ranks, 1 = smallest
+  const idx = a.map((v, i) => [v, i]).sort((x, y) => x[0] - y[0]), r = new Array(a.length);
+  for (let i = 0; i < idx.length;) { let j = i; while (j + 1 < idx.length && idx[j + 1][0] === idx[i][0]) j++; const rk = (i + j) / 2 + 1; for (let k = i; k <= j; k++) r[idx[k][1]] = rk; i = j + 1; }
+  return r;
+}
+function pctRank(a) { const r = ranks(a), n = a.length; return r.map(x => (x - 1) / (n - 1) * 100); }
+function spearman(x, y) {
+  const p = [], q = []; for (let i = 0; i < x.length; i++) if (x[i] != null && y[i] != null) { p.push(x[i]); q.push(y[i]); }
+  if (p.length < 5) return null;
+  const a = ranks(p), b = ranks(q), n = a.length, ma = a.reduce((s, v) => s + v, 0) / n, mb = b.reduce((s, v) => s + v, 0) / n;
+  let sab = 0, saa = 0, sbb = 0; for (let i = 0; i < n; i++) { sab += (a[i] - ma) * (b[i] - mb); saa += (a[i] - ma) ** 2; sbb += (b[i] - mb) ** 2; }
+  return {rho: sab / Math.sqrt(saa * sbb), n};
+}
+const U = D.units;
+const tip = $('#tip');
+function showTip(e, html) { tip.innerHTML = html; tip.style.display = 'block'; const w = tip.offsetWidth, h = tip.offsetHeight; let x = e.clientX + 14, y = e.clientY + 14; if (x + w > innerWidth - 6) x = e.clientX - w - 14; if (y + h > innerHeight - 6) y = e.clientY - h - 14; tip.style.left = x + 'px'; tip.style.top = y + 'px'; }
+function hideTip() { tip.style.display = 'none'; }
+
+/* ------------------------------------------------------------------ map component */
+function svgEl(n, a) { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); return e; }
+function makeMap(host, o) {
+  const svg = svgEl('svg', {viewBox: `0 0 ${D.W} ${D.H}`, role: 'group', 'aria-label': o.label});
+  const gU = svgEl('g', {}), paths = [];
+  U.forEach(u => {
+    const p = svgEl('path', {d: u.d, class: 'u', 'data-u': u.id, tabindex: 0, role: 'button', 'fill-rule': 'evenodd'});
+    p.addEventListener('click', () => o.onSelect(u.id));
+    p.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); o.onSelect(u.id); } });
+    p.addEventListener('mousemove', e => showTip(e, o.tip(u.id)));
+    p.addEventListener('mouseleave', hideTip);
+    p.addEventListener('focus', () => { const r = p.getBoundingClientRect(); showTip({clientX: r.left + r.width / 2, clientY: r.top + r.height / 2}, o.tip(u.id)); });
+    p.addEventListener('blur', hideTip);
+    gU.appendChild(p); paths.push(p);
+  });
+  svg.appendChild(gU);
+  svg.appendChild(svgEl('path', {d: D.internal, class: 'inner'}));
+  svg.appendChild(svgEl('path', {d: D.coast, class: 'coast'}));
+  const gUhf = svgEl('g', {style: 'display:none'});
+  D.uhf.forEach(x => gUhf.appendChild(svgEl('path', {d: x.d, class: 'uhfline', 'fill-rule': 'evenodd'})));
+  svg.appendChild(gUhf);
+  const outl = svgEl('path', {class: 'outl', d: '', 'fill-rule': 'evenodd'}); svg.appendChild(outl);
+  const selp = svgEl('path', {class: 'selp', d: '', 'fill-rule': 'evenodd'}); svg.appendChild(selp);
+  D.boroughLabels.forEach(([n, x, y, a]) => { const t = svgEl('text', {x, y, class: 'blabel', 'text-anchor': a === 'right' ? 'end' : a === 'left' ? 'start' : 'middle'}); t.textContent = n; svg.appendChild(t); });
+  host.appendChild(svg);
+  return {
+    paint(fills) { paths.forEach((p, i) => { p.setAttribute('fill', fills[i]); p.setAttribute('aria-label', o.aria(i)); }); },
+    select(id) { selp.setAttribute('d', id == null ? '' : U[id].d); },
+    outline(ids) { outl.setAttribute('d', ids.map(i => U[i].d).join('')); },
+    uhf(on) { gUhf.style.display = on ? '' : 'none'; }
+  };
+}
+function legend(host, title, items, extra) {
+  host.innerHTML = `<div class="ltitle" style="flex-basis:100%">${esc(title)}</div>` +
+    items.map(it => `<span class="sw${it.nd ? ' nd' : ''}"><i style="background:${it.c || 'none'}"></i>${esc(it.t)}</span>`).join('') + (extra || '');
+}
+
+/* ------------------------------------------------------------------ cancer datasets */
+const mean = a => a.reduce((s, v) => s + v, 0) / a.length;
+const CAN = {
+  lung: {label: 'Lung & bronchus (workbook: NYC Lung and Bronchus Cancer Integrated Table)', short: 'Lung & bronchus',
+    rate: D.lung.rate, cases: D.lung.cases, avg: D.lung.avg, total: D.lung.total, nyc: D.lung.nyc_rate, nycAvg: D.lung.nyc_avg,
+    breaks: [30,40,50,60,75,90], labels: ["< 30","30–40","40–50","50–60","60–75","75–90","90 +"]},
+};
+(function () {
+  const a = D.allc, tot = [], avg = [];
+  for (let u = 0; u < N; u++) { const c = a.count[u].reduce((s, v) => s + v, 0), p = a.pop[u].reduce((s, v) => s + v, 0); tot.push(c); avg.push(c / p * 1e5); }
+  const nyc = YEARS.map((_, i) => mean(a.rate.map(r => r[i])));
+  const pooled = [].concat(...a.rate), br = [1, 2, 3, 4, 5, 6].map(k => Math.round(quantile(pooled, k / 7) / 25) * 25);
+  const lab = [`< ${br[0]}`, ...br.slice(1).map((b, i) => `${br[i]}–${b}`), `${br[5]} +`];
+  CAN.all = {label: 'All cancers combined (Duc workbooks, sheet "Cancer Incidence (PUMA)")', short: 'All cancers (Duc sheet)', rate: a.rate, cases: a.count, avg, total: tot,
+    nyc, nycAvg: mean(avg), breaks: br, labels: lab};
+})();
+
+/* ------------------------------------------------------------------ factor engine */
+const LAYERS = {
+  smoke: {name: 'Smoking', unit: '% of adults who smoke', src: 'NYC Community Health Survey, UHF34 areas', years: D.smoke.years},
+  pov:   {name: 'Poverty', unit: '% of residents below poverty line', src: 'ACS 5-year estimates, PUMA/sub-borough', years: [2010, 2023]},
+  ins:   {name: 'No health insurance', unit: '% of residents uninsured (100 − insured %)', src: 'NYC Community Health Survey, UHF34 areas', years: D.ins.years},
+};
+const fcache = {};
+function uhfBased(key, y) {
+  const S = D[key], idx = S.years.indexOf(y); if (idx < 0) return null;
+  return U.map((_, u) => {
+    let sw = 0, sv = 0, parts = [];
+    D.weights[u].forEach(([j, w]) => {
+      const cell = S.v[D.uhfCodes[j]][idx]; if (!cell || cell[0] == null) return;
+      const v = key === 'ins' ? 100 - cell[0] : cell[0];
+      sw += w; sv += w * v; parts.push({j, w, v, flag: cell[1], lo: cell[2], hi: cell[3]});
+    });
+    parts.forEach(p => p.w /= sw);
+    return sw ? {v: sv / sw, parts} : null;
+  });
+}
+function winMid(w) { return parseInt(w.slice(0, 4)) + 2; }
+function povAt(y) {
+  const W = D.pov.wins; let best = null, bd = 1e9;
+  W.forEach(w => { const d = Math.abs(winMid(w) - y); if (d < bd || (d === bd && winMid(w) < winMid(best))) { bd = d; best = w; } });
+  return U.map((_, u) => {
+    const v = D.pov.v[best][u]; if (v == null) return null;
+    return {v, win: best, exact: bd === 0, approx: (u === 1 || u === 9) && parseInt(best) < 2018};
+  });
+}
+function factor(key, y) {
+  const k = key + y; if (k in fcache) return fcache[k];
+  return fcache[k] = key === 'pov' ? povAt(y) : uhfBased(key, y);
+}
+// pooled quantile breaks per layer (comparable across years)
+const SBREAKS = {};
+Object.keys(LAYERS).forEach(key => {
+  const all = []; YEARS.forEach(y => { const f = factor(key, y); if (f) f.forEach(x => x && all.push(x.v)); });
+  SBREAKS[key] = [1,2,3,4,5,6].map(k => Math.round(quantile(all, k / 7) * 2) / 2);
+  LAYERS[key].all = all;
+});
+
+/* ------------------------------------------------------------------ TAB 2 : cancer maps */
+const cstate = {y: 2023, set: 'lung', playing: null};
+const cyear = $('#c-year'), cset = $('#c-set');
+cyear.innerHTML = YEARS.slice().reverse().map(y => `<option value="${y}">${y}</option>`).join('') + '<option value="avg">2010–2023 average (14-yr)</option>';
+cset.innerHTML = Object.entries(CAN).map(([k, v]) => `<option value="${k}">${esc(v.short)}</option>`).join('');
+cyear.value = String(cstate.y);
+function cVal(set, u, y) { const d = CAN[set]; return y === 'avg' ? d.avg[u] : d.rate[u][YEARS.indexOf(+y)]; }
+function cCases(set, u, y) { const d = CAN[set]; return y === 'avg' ? d.total[u] : d.cases[u][YEARS.indexOf(+y)]; }
+function cRank(set, u, y) { const v = U.map((_, i) => cVal(set, i, y)); return 1 + v.filter(x => x > v[u]).length; }
+const cmap = makeMap($('#c-map'), {
+  label: 'Cancer incidence map of NYC neighborhoods',
+  onSelect: id => { sel = id; renderCancerSel(); renderFactorSel(); },
+  tip: u => { const d = CAN[cstate.set], v = cVal(cstate.set, u, cstate.y); return `<b>${esc(U[u].name)}</b>${U[u].borough}<br>${fmt(v)} per 100,000 &middot; ${cstate.y === 'avg' ? '14-yr avg' : cstate.y}`; },
+  aria: i => `${U[i].name}: ${fmt(cVal(cstate.set, i, cstate.y))} per 100,000`
+});
+function renderCancer() {
+  const d = CAN[cstate.set], y = cstate.y;
+  const vals = U.map((_, u) => cVal(cstate.set, u, y));
+  cmap.paint(vals.map(v => BLUE[classOf(v, d.breaks)]));
+  const counts = new Array(7).fill(0); vals.forEach(v => counts[classOf(v, d.breaks)]++);
+  legend($('#c-legend'), `${d.short} incidence, ${y === 'avg' ? '2010–2023 pooled average' : y} (per 100,000) · number of neighborhoods in each class`,
+    d.labels.map((l, i) => ({c: BLUE[i], t: `${l} (${counts[i]})`})));
+  // table
+  const rows = U.map((u, i) => ({u: i, name: u.name, b: u.borough, rate: vals[i], cases: cCases(cstate.set, i, y), rank: cRank(cstate.set, i, y)}));
+  const key = cTbl.key, dir = cTbl.dir;
+  rows.sort((a, b) => (typeof a[key] === 'string' ? a[key].localeCompare(b[key]) : a[key] - b[key]) * dir);
+  const th = (k, t, n) => `<th class="${n ? 'n' : ''}" data-k="${k}" aria-sort="${key === k ? (dir > 0 ? 'ascending' : 'descending') : 'none'}">${t}${key === k ? (dir > 0 ? ' ▲' : ' ▼') : ''}</th>`;
+  $('#c-table').innerHTML = `<thead><tr>${th('rank','Rank',1)}${th('name','Neighborhood')}${th('b','Borough')}${th('rate','Rate /100k',1)}${th('cases', y === 'avg' ? 'Cases (14 yr)' : 'Cases', 1)}</tr></thead><tbody>` +
+    rows.map(r => `<tr class="click${r.u === sel ? ' hl' : ''}" data-u="${r.u}"><td class="n">${r.rank}</td><td>${esc(r.name)}</td><td>${r.b}</td><td class="n">${fmt(r.rate)}</td><td class="n">${fmt(r.cases, 0)}</td></tr>`).join('') + '</tbody>';
+  renderCancerSel();
+}
+const cTbl = {key: 'rank', dir: 1};
+$('#c-table').addEventListener('click', e => {
+  const th = e.target.closest('th'); if (th) { const k = th.dataset.k; if (cTbl.key === k) cTbl.dir *= -1; else { cTbl.key = k; cTbl.dir = (k === 'name' || k === 'b' || k === 'rank') ? 1 : -1; } renderCancer(); return; }
+  const tr = e.target.closest('tr[data-u]'); if (tr) { sel = +tr.dataset.u; renderCancerSel(); renderFactorSel(); }
+});
+function spark(series, nyc, yi, color) {
+  const w = 330, h = 96, p = {l: 30, r: 16, t: 8, b: 18};
+  const all = series.concat(nyc || []), lo = Math.min(...all), hi = Math.max(...all), pad = (hi - lo) * .12 || 1, mn = lo - pad, mx = hi + pad;
+  const X = i => p.l + i * (w - p.l - p.r) / (series.length - 1), Y = v => p.t + (1 - (v - mn) / (mx - mn)) * (h - p.t - p.b);
+  const line = a => a.map((v, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join('');
+  let s = `<svg class="spark" viewBox="0 0 ${w} ${h}" role="img" aria-label="Rate over time">`;
+  [mn + pad, (mn + mx) / 2, mx - pad].forEach(v => s += `<line x1="${p.l}" x2="${w - p.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${p.l - 4}" y="${Y(v) + 3}" text-anchor="end">${Math.round(v)}</text>`);
+  if (nyc) s += `<path d="${line(nyc)}" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+  s += `<path d="${line(series)}" fill="none" stroke="${color}" stroke-width="2.2"/>`;
+  series.forEach((v, i) => s += `<circle cx="${X(i)}" cy="${Y(v)}" r="${i === yi ? 4.5 : 2}" fill="${color}" ${i === yi ? 'stroke="var(--surface)" stroke-width="2"' : ''}><title>${YEARS[i]}: ${fmt(v)}</title></circle>`);
+  [0, 4, 8, 13].forEach(i => s += `<text x="${X(i)}" y="${h - 4}" text-anchor="middle">${YEARS[i]}</text>`);
+  return s + '</svg>';
+}
+function factorLines(u, y) {
+  return Object.keys(LAYERS).map(k => {
+    const yrs = LAYERS[k].years, yy = Math.min(Math.max(y, yrs[0]), yrs[yrs.length - 1]), f = factor(k, yy), c = f && f[u];
+    return `<dt><span class="chip" style="background:${LAYERCOL[k]}"></span>${LAYERS[k].name}</dt><dd>${c ? fmt(c.v) + '%' + (yy !== y ? ` <span class="muted">(${yy})</span>` : '') : '<span class="muted">no data</span>'}</dd>`;
+  }).join('');
+}
+function renderCancerSel() {
+  const box = $('#c-info'), d = CAN[cstate.set], y = cstate.y;
+  $$tableHL();
+  cmap.select(sel);
+  if (sel == null) {
+    box.innerHTML = `<h2>Select a neighborhood</h2><p class="small">Click any area on the map (or a row in the table) to see its incidence rate, number of cases, rank, 14-year trend and the environmental / socioeconomic context.</p>
+      <dl class="kv"><dt>NYC average (${y === 'avg' ? '14-yr' : y})</dt><dd>${fmt(y === 'avg' ? d.nycAvg : d.nyc[YEARS.indexOf(+y)])} /100k</dd><dt>Highest</dt><dd>${esc(U[maxIdx(y)].name)}</dd><dt>Lowest</dt><dd>${esc(U[minIdx(y)].name)}</dd></dl>
+      <div class="note" style="margin-top:12px">Dataset shown: <b>${esc(d.label)}</b>.</div>`;
+    return;
+  }
+  const u = sel, v = cVal(cstate.set, u, y), ny = y === 'avg' ? d.nycAvg : d.nyc[YEARS.indexOf(+y)], ctxY = y === 'avg' ? 2022 : +y;
+  const diff = v - ny;
+  box.innerHTML = `<div class="unit">${U[u].borough}${U[u].puma ? ' · PUMA ' + U[u].puma : ''} · workbook code ${u}</div><h2 style="font-size:18px;margin:2px 0 8px">${esc(U[u].name)}</h2>
+    <div class="big">${fmt(v)} <span class="unit">per 100,000 · ${y === 'avg' ? '14-yr avg' : y}</span></div>
+    <dl class="kv"><dt>Cases</dt><dd>${fmt(cCases(cstate.set, u, y), 0)}${y === 'avg' ? ' (2010–2023 total)' : ''}</dd>
+      <dt>Rank (1 = highest)</dt><dd>${cRank(cstate.set, u, y)} of 55</dd>
+      <dt>vs NYC average (${fmt(ny)})</dt><dd>${diff >= 0 ? '+' : '−'}${fmt(Math.abs(diff))} (${diff >= 0 ? '+' : '−'}${fmt(Math.abs(diff) / ny * 100, 0)}%)</dd>
+      <dt>14-yr average rate</dt><dd>${fmt(d.avg[u])}</dd><dt>Area</dt><dd>${fmt(U[u].area, 1)} km²</dd></dl>
+    <h3>Trend 2010–2023 <span style="text-transform:none;letter-spacing:0;font-weight:400">(dashed = NYC)</span></h3>
+    ${spark(d.rate[u], d.nyc, y === 'avg' ? -1 : YEARS.indexOf(+y), 'var(--accent)')}
+    <h3>Environment &amp; socioeconomic context · ${ctxY}</h3>
+    <dl class="kv">${factorLines(u, ctxY)}</dl>
+    <button class="btn" id="goF">Open in layered map &rarr;</button>
+    ${U[u].note ? `<div class="note">${esc(U[u].note)}. Boundary re-cut from PUMA 3807 so it matches the workbook's definition.</div>` : ''}
+    <details style="margin-top:10px"><summary>All years</summary><table style="margin-top:6px"><tbody>${YEARS.map((yy, i) => `<tr><td>${yy}</td><td class="n">${fmt(d.rate[u][i])}</td><td class="n muted">${fmt(d.cases[u][i], 0)} cases</td></tr>`).join('')}</tbody></table></details>`;
+  const g = $('#goF'); if (g) g.onclick = () => showTab('factors');
+}
+function maxIdx(y) { let b = 0; U.forEach((_, i) => { if (cVal(cstate.set, i, y) > cVal(cstate.set, b, y)) b = i; }); return b; }
+function minIdx(y) { let b = 0; U.forEach((_, i) => { if (cVal(cstate.set, i, y) < cVal(cstate.set, b, y)) b = i; }); return b; }
+function $$tableHL() { document.querySelectorAll('#c-table tbody tr').forEach(tr => tr.classList.toggle('hl', +tr.dataset.u === sel)); }
+cyear.onchange = () => { cstate.y = cyear.value === 'avg' ? 'avg' : +cyear.value; renderCancer(); };
+cset.onchange = () => { cstate.set = cset.value; renderCancer(); };
+function stepYear(dir) {
+  const opts = [...cyear.options].map(o => o.value).filter(v => v !== 'avg').map(Number).sort((a, b) => a - b);
+  let i = cstate.y === 'avg' ? opts.length - 1 : opts.indexOf(cstate.y); i = (i + dir + opts.length) % opts.length;
+  cstate.y = opts[i]; cyear.value = String(opts[i]); renderCancer();
+}
+$('#c-prev').onclick = () => stepYear(-1); $('#c-next').onclick = () => stepYear(1);
+$('#c-play').onclick = () => {
+  const b = $('#c-play');
+  if (cstate.playing) { clearInterval(cstate.playing); cstate.playing = null; b.innerHTML = '&#9654; Play'; return; }
+  if (cstate.y === 'avg' || cstate.y === 2023) { cstate.y = 2010; cyear.value = '2010'; renderCancer(); }
+  b.innerHTML = '&#10074;&#10074; Pause';
+  cstate.playing = setInterval(() => { if (cstate.y === 2023) { clearInterval(cstate.playing); cstate.playing = null; b.innerHTML = '&#9654; Play'; return; } stepYear(1); }, 1100);
+};
+
+/* ------------------------------------------------------------------ TAB 3 : factor layers */
+const fstate = {on: {smoke: true, pov: true, ins: false}, w: {smoke: 1, pov: 1, ins: 1}, y: 2019, outl: true, cset: 'lung', uhf: false};
+const fy = $('#f-year'); fy.min = 2010; fy.max = 2023; fy.value = fstate.y;
+$('#f-cset').innerHTML = Object.entries(CAN).map(([k, v]) => `<option value="${k}">${esc(v.short)}</option>`).join('');
+function buildLayerUI() {
+  $('#f-layers').innerHTML = Object.keys(LAYERS).map(k => {
+    const L = LAYERS[k], has = !!factor(k, fstate.y);
+    return `<div class="layerrow"><input type="checkbox" id="L-${k}" ${fstate.on[k] ? 'checked' : ''} aria-label="${L.name}">
+      <label for="L-${k}" class="nm"><span class="chip" style="background:${LAYERCOL[k]}"></span>${L.name}${has ? '' : ' <span class="tag" style="background:var(--warn-bg);color:var(--warn)">no data this year</span>'}</label>
+      <span class="small" title="Relative weight in the combined index"><input type="range" min="1" max="5" step="1" value="${fstate.w[k]}" data-w="${k}" aria-label="${L.name} weight" ${fstate.on[k] ? '' : 'disabled'}> ×${fstate.w[k]}</span>
+      <div class="rg">${esc(L.unit)} · ${esc(L.src)}${k === 'smoke' ? ' · 2003–2022' : k === 'ins' ? ' · 2012–2022' : ' · windows 2007-11 … 2019-23'}</div></div>`;
+  }).join('');
+  document.querySelectorAll('#f-layers input[type=checkbox]').forEach(c => c.onchange = () => { fstate.on[c.id.slice(2)] = c.checked; renderFactors(); });
+  document.querySelectorAll('#f-layers input[type=range]').forEach(c => c.oninput = () => { fstate.w[c.dataset.w] = +c.value; renderFactors(); });
+}
+function activeLayers() { return Object.keys(LAYERS).filter(k => fstate.on[k] && factor(k, fstate.y)); }
+function fComputed() {
+  const y = fstate.y, act = activeLayers(), per = {}, pct = {};
+  act.forEach(k => { per[k] = factor(k, y); const v = per[k].map(x => x ? x.v : null); const ok = v.map(x => x == null ? null : x); const idx = ok.map((x, i) => x == null ? -1 : i).filter(i => i >= 0); const pr = pctRank(idx.map(i => ok[i])); pct[k] = new Array(N).fill(null); idx.forEach((i, j) => pct[k][i] = pr[j]); });
+  const comp = U.map((_, u) => { let sw = 0, s = 0; act.forEach(k => { if (pct[k][u] != null) { sw += fstate.w[k]; s += fstate.w[k] * pct[k][u]; } }); return sw ? s / sw : null; });
+  let vals = null, br = null, labels = null, title = '';
+  if (act.length === 1) {
+    const k = act[0]; vals = per[k].map(x => x ? x.v : null); br = SBREAKS[k];
+    labels = [`< ${br[0]}`, ...br.slice(1).map((b, i) => `${br[i]}–${b}`), `${br[5]} +`].map(s => s + '%');
+    title = `${LAYERS[k].name}: ${LAYERS[k].unit}, ${y}`;
+  } else if (act.length > 1) {
+    vals = comp; br = [1,2,3,4,5,6].map(k => k * 100 / 7); labels = ['Lowest 1/7','2','3','4','5','6','Highest 1/7'];
+    title = `Combined burden index (${act.map(k => LAYERS[k].name.toLowerCase() + (fstate.w[k] > 1 ? ' ×' + fstate.w[k] : '')).join(' + ')}), ${y} — weighted mean percentile rank`;
+  }
+  return {act, per, pct, comp, vals, br, labels, title};
+}
+function topSet() { const d = CAN[fstate.cset], v = U.map((_, u) => d.rate[u][YEARS.indexOf(fstate.y)]); const thr = quantile(v, .8); return v.map((x, i) => x >= thr ? i : -1).filter(i => i >= 0); }
+let FC = null;
+const fmap = makeMap($('#f-map'), {
+  label: 'Layered environmental and socioeconomic map',
+  onSelect: id => { sel = id; renderFactorSel(); renderCancerSel(); },
+  tip: u => {
+    if (!FC) return esc(U[u].name);
+    const lines = FC.act.map(k => `${LAYERS[k].name}: ${fmt(FC.per[k][u] && FC.per[k][u].v)}%`);
+    return `<b>${esc(U[u].name)}</b>${U[u].borough}<br>${lines.join('<br>')}${FC.act.length > 1 ? `<br>Index: ${fmt(FC.comp[u], 0)}/100` : ''}`;
+  },
+  aria: i => FC && FC.vals && FC.vals[i] != null ? `${U[i].name}: ${fmt(FC.vals[i])}` : `${U[i].name}: no data`
+});
+function renderFactors() {
+  const y = fstate.y; $('#f-yearv').textContent = y;
+  buildLayerUI();
+  FC = fComputed();
+  if (!FC.vals) {
+    fmap.paint(U.map(() => 'var(--line)'));
+    legend($('#f-legend'), 'No layer active — switch a layer on to colour the map', []);
+  } else {
+    fmap.paint(FC.vals.map(v => v == null ? '#cfcdc4' : ORANGE[classOf(v, FC.br)]));
+    const counts = new Array(7).fill(0); FC.vals.forEach(v => v != null && counts[classOf(v, FC.br)]++);
+    legend($('#f-legend'), FC.title, FC.labels.map((l, i) => ({c: ORANGE[i], t: `${l} (${counts[i]})`})),
+      fstate.outl ? `<span class="sw"><i style="background:none;border:3px solid var(--accent)"></i>Top 20% ${esc(CAN[fstate.cset].short.toLowerCase())} incidence, ${y}</span>` : '');
+  }
+  fmap.outline(fstate.outl ? topSet() : []);
+  fmap.uhf(fstate.uhf);
+  // warnings
+  const w = [];
+  Object.keys(LAYERS).forEach(k => { if (fstate.on[k] && !factor(k, y)) w.push(`${LAYERS[k].name} has no data for ${y} (available ${LAYERS[k].years[0]}–${LAYERS[k].years[LAYERS[k].years.length - 1]}) and is left out of the map.`); });
+  if (fstate.on.pov && factor('pov', y) && !factor('pov', y)[0].exact) w.push(`Poverty for ${y}: the exact 5-year ACS window centred on ${y} is not in the file, so the nearest available window (${factor('pov', y)[0].win}) is shown.`);
+  if ((fstate.on.smoke || fstate.on.ins) ) w.push('Smoking and insurance are measured for 34 UHF areas, not for the 55 neighborhoods: each neighborhood gets the area-weighted blend of the UHF areas it overlaps (turn on the UHF34 boundaries to see them). Treat it as an approximation.');
+  $('#f-warn').innerHTML = w.map(t => `<div class="note">${esc(t)}</div>`).join('');
+  // stats
+  const cv = U.map((_, u) => CAN[fstate.cset].rate[u][YEARS.indexOf(y)]);
+  let st = `<h2>Does the pattern line up with cancer?</h2><div class="small muted" style="margin-bottom:6px">Spearman rank correlation with ${esc(CAN[fstate.cset].short.toLowerCase())} incidence in ${y} across the 55 neighborhoods. Ecological, crude rates — not causal.</div><table><tbody>`;
+  FC.act.forEach(k => { const r = spearman(FC.per[k].map(x => x && x.v), cv); st += `<tr><td><span class="chip" style="background:${LAYERCOL[k]}"></span>${LAYERS[k].name}</td><td class="n">${r ? 'ρ = ' + fmt(r.rho, 2) : '–'}</td></tr>`; });
+  if (FC.act.length > 1) { const r = spearman(FC.comp, cv); st += `<tr><td><b>Combined index</b></td><td class="n"><b>${r ? 'ρ = ' + fmt(r.rho, 2) : '–'}</b></td></tr>`; }
+  if (!FC.act.length) st += '<tr><td class="muted">No layer active</td><td></td></tr>';
+  $('#f-stats').innerHTML = st + '</tbody></table>';
+  renderFactorSel();
+}
+function renderFactorSel() {
+  fmap.select(sel);
+  const box = $('#f-info'); if (!FC) return;
+  if (sel == null) { box.innerHTML = `<h2>Select a neighborhood</h2><p class="small">Click a neighborhood to see each layer's value, how it ranks, and which source areas it was built from.</p>`; return; }
+  const u = sel, y = fstate.y, d = CAN[fstate.cset];
+  let h = `<div class="unit">${U[u].borough}${U[u].puma ? ' · PUMA ' + U[u].puma : ''}</div><h2 style="font-size:18px;margin:2px 0 8px">${esc(U[u].name)} <span class="unit">· ${y}</span></h2>`;
+  if (FC.act.length > 1) h += `<div class="big">${fmt(FC.comp[u], 0)}<span class="unit"> / 100 combined index</span></div><div class="small muted">Higher = more of the selected burdens relative to other neighborhoods.</div>`;
+  h += '<h3>Layers</h3>';
+  Object.keys(LAYERS).forEach(k => {
+    const f = factor(k, y), c = f && f[u], on = fstate.on[k];
+    h += `<div style="padding:7px 0;border-bottom:1px solid var(--line);opacity:${on ? 1 : .55}"><div style="display:flex;justify-content:space-between"><b><span class="chip" style="background:${LAYERCOL[k]}"></span>${LAYERS[k].name}</b><span>${c ? fmt(c.v) + '%' : '<span class="muted">no data</span>'}</span></div>`;
+    if (c) {
+      const all = f.map(x => x && x.v).filter(x => x != null), rk = 1 + all.filter(x => x > c.v).length;
+      h += `<div class="small muted">Rank ${rk} of ${all.length} (1 = highest) · NYC neighborhood median ${fmt(quantile(all, .5))}%</div>`;
+      if (k === 'pov') h += `<div class="small muted">ACS window ${c.win}${c.exact ? '' : ' (nearest to ' + y + ')'}${c.approx ? ' · Midtown split: blended from the two old sub-boroughs' : ''}</div>`;
+      else h += `<div class="small muted">From UHF34: ` + c.parts.sort((a, b) => b.w - a.w).slice(0, 3).map(p => `${esc(D.uhfNames[p.j])} ${fmt(p.w * 100, 0)}% (${fmt(p.v)}%${p.flag ? '*' : ''})`).join('; ') + (c.parts.some(p => p.flag) ? '<br>* statistically unstable estimate in source' : '') + '</div>';
+    }
+    h += '</div>';
+  });
+  const cv = d.rate[u][YEARS.indexOf(y)];
+  h += `<h3>${esc(d.short)} incidence</h3><div class="big">${fmt(cv)} <span class="unit">per 100,000 · ${y}</span></div><div class="small muted">Rank ${1 + U.filter((_, i) => d.rate[i][YEARS.indexOf(y)] > cv).length} of 55 · ${fmt(CAN[fstate.cset].total[u], 0)} cases 2010–2023</div>`;
+  h += `<div style="margin-top:8px">${spark(d.rate[u], d.nyc, YEARS.indexOf(y), 'var(--accent)')}</div>`;
+  box.innerHTML = h;
+}
+fy.oninput = () => { fstate.y = +fy.value; renderFactors(); };
+$('#f-outl').onchange = e => { fstate.outl = e.target.checked; renderFactors(); };
+$('#f-uhf').onchange = e => { fstate.uhf = e.target.checked; renderFactors(); };
+$('#f-cset').onchange = e => { fstate.cset = e.target.value; renderFactors(); };
+
+/* ------------------------------------------------------------------ TAB 1 : data browser */
+const CAVEATS = [
+  '<b>Two geographies.</b> Cancer incidence and poverty are reported for the 55 neighborhoods (PUMA-based); smoking and health insurance are reported for 34 UHF areas. The layered map transfers UHF values to neighborhoods by area overlap (approximation — please do not quote the transferred numbers as official figures).',
+  '<b>The Duc workbooks\' "Cancer Incidence (PUMA)" sheet is all cancers combined, not lung.</b> Its counts (e.g. 38,708 cases in 2010) are about ten times the lung & bronchus workbook (≈4,200). The maps tab lets you switch between the two.',
+  '<b>Poverty in "Integrated Master (PUMA)" is blank for "Chelsea & Hell\'s Kitchen"</b> (name-matching problem with the apostrophe). The maps here are built directly from the source CSV and do not have this gap.',
+  '<b>Poverty is a 5-year ACS window</b> (e.g. 2019-23). Windows 2016-20 and 2017-21 are not in the file at PUMA level; the nearest window is used and flagged. Before 2018 the windows are sub-borough based and map to the 2010 PUMA boundaries.',
+  '<b>Boundary vintage.</b> The SEER*Stat session file references 2020-defined PUMAs; the maps use the 2010 PUMA boundaries (the geography the 55 workbook neighborhoods follow), with Midtown cut along the CD4 | CD5 line so it matches the workbook.',
+  '<b>Rates are crude</b> (not age-adjusted) per 100,000. The "NYC average" row in the lung workbook is the mean of the 55 neighborhood rates, not a population-weighted citywide rate.',
+  '<b>Duplicates.</b> The smoking, poverty and insurance CSVs were uploaded twice, and both Duc workbooks contain the same five data sheets; duplicates are shown once and linked.'
+];
+$('#caveats').innerHTML = CAVEATS.map(c => `<li style="margin:4px 0">${c}</li>`).join('');
+$('#foot').innerHTML = 'Boundaries: nycehs/NYC_geography (originally NYC Dept. of City Planning). Health data: NYC Health Department Community Health Survey / Environment &amp; Health Data Portal; ACS 5-year estimates; cancer data from the research group\'s SEER*Stat extract and Excel workbooks. Everything in this page is embedded &mdash; it works offline.';
+const sheetsByKey = D.sheets.map((s, i) => ({...s, i}));
+let dstate = {i: sheetsByKey.findIndex(s => s.sheet === 'Crude Incidence Rates'), q: '', page: 0, sortCol: null, sortDir: 1};
+function renderFlist() {
+  const groups = {}; sheetsByKey.forEach(s => (groups[s.file] = groups[s.file] || []).push(s));
+  let h = '';
+  Object.entries(groups).forEach(([f, arr]) => { h += `<h4>${esc(f)}</h4>` + arr.map(s => `<button data-i="${s.i}" ${s.i === dstate.i ? 'aria-current="true"' : ''}>${esc(s.sheet)}<span class="cnt">${s.same_as ? 'dup' : s.nrows}</span></button>`).join(''); });
+  h += `<h4>SEER*Stat session file</h4><button data-i="ini" ${dstate.i === 'ini' ? 'aria-current="true"' : ''}>Cancer_incidence_read_by_SEERstat.ini</button>`;
+  $('#flist').innerHTML = h;
+}
+function sheetBody(s) {
+  const rows = s.rows; if (!rows.length) return {head: null, body: [], pre: []};
+  const nc = s.ncols;
+  if (s.nrows <= 30) return {head: null, body: rows, pre: [], readme: true};
+  let hi = rows.findIndex(r => r.filter(v => v != null && v !== '').length >= Math.max(2, Math.ceil(nc * .6)));
+  if (hi < 0) hi = 0;
+  return {head: rows[hi].map((v, j) => v == null ? 'Col ' + (j + 1) : String(v)), body: rows.slice(hi + 1), pre: rows.slice(0, hi)};
+}
+function toCSV(head, body) { const q = v => v == null ? '' : /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : v; return [head, ...body].map(r => r.map(q).join(',')).join('\n'); }
+function renderSheet() {
+  const box = $('#sheetview');
+  if (dstate.i === 'ini') { box.innerHTML = `<h2>Cancer_incidence_read_by_SEERstat.ini</h2><div class="small muted" style="margin-bottom:8px">SEER*Stat session definition used to pull the cancer incidence data (text, as uploaded).</div><pre class="ini">${esc(D.ini)}</pre>`; return; }
+  const s = sheetsByKey[dstate.i];
+  if (s.same_as) { const orig = sheetsByKey.findIndex(x => (x.file + ' › ' + x.sheet) === s.same_as); box.innerHTML = `<h2>${esc(s.sheet)}</h2><div class="small muted">${esc(s.file)}</div><div class="note">This sheet is identical to <b>${esc(s.same_as)}</b> (${s.nrows} rows × ${s.ncols} columns).</div><button class="btn primary" id="gooriginal">Open the original</button>`; $('#gooriginal').onclick = () => { dstate.i = orig; dstate.q = ''; dstate.page = 0; dstate.sortCol = null; renderFlist(); renderSheet(); }; return; }
+  const {head, body, pre, readme} = sheetBody(s);
+  if (readme) {
+    box.innerHTML = `<h2>${esc(s.sheet)}</h2><div class="small muted">${esc(s.file)}</div><table style="margin-top:8px"><tbody>${body.map(r => `<tr>${r.map(v => `<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`; return;
+  }
+  const q = dstate.q.trim().toLowerCase();
+  let rows = q ? body.filter(r => r.some(v => v != null && String(v).toLowerCase().includes(q))) : body.slice();
+  if (dstate.sortCol != null) { const c = dstate.sortCol, d = dstate.sortDir; rows.sort((a, b) => { const x = a[c], y = b[c]; if (x == null) return 1; if (y == null) return -1; return (typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), undefined, {numeric: true})) * d; }); }
+  const PS = 100, pages = Math.max(1, Math.ceil(rows.length / PS)); dstate.page = Math.min(dstate.page, pages - 1);
+  const slice = rows.slice(dstate.page * PS, dstate.page * PS + PS);
+  const isNum = j => body.slice(0, 50).every(r => r[j] == null || typeof r[j] === 'number');
+  box.innerHTML = `<h2>${esc(s.sheet)}</h2><div class="small muted">${esc(s.file)} · ${s.nrows} rows × ${s.ncols} columns</div>
+    ${pre.length ? `<div class="small" style="margin:6px 0;color:var(--ink2)">${pre.map(r => esc(r.filter(v => v != null).join(' — '))).filter(Boolean).join('<br>')}</div>` : ''}
+    <div class="controls" style="margin-top:8px"><input type="search" id="dq" placeholder="Filter rows…" value="${esc(dstate.q)}" style="padding:6px 9px;border:1px solid var(--line2);border-radius:7px;background:var(--surface);min-width:220px"><span class="small muted">${rows.length} of ${body.length} rows</span><button class="btn" id="dcsv">Download CSV</button></div>
+    <div class="tscroll"><table><thead><tr>${head.map((hh, j) => `<th class="${isNum(j) ? 'n' : ''}" data-c="${j}" aria-sort="${dstate.sortCol === j ? (dstate.sortDir > 0 ? 'ascending' : 'descending') : 'none'}">${esc(hh)}${dstate.sortCol === j ? (dstate.sortDir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>
+    <tbody>${slice.map(r => `<tr>${head.map((_, j) => `<td class="${isNum(j) ? 'n' : ''}">${r[j] == null ? '' : esc(r[j])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+    <div class="pager"><button class="btn" id="dpp" ${dstate.page === 0 ? 'disabled' : ''}>&larr;</button><span class="small">Page ${dstate.page + 1} / ${pages}</span><button class="btn" id="dnp" ${dstate.page >= pages - 1 ? 'disabled' : ''}>&rarr;</button></div>`;
+  const qi = $('#dq'); qi.oninput = () => { dstate.q = qi.value; dstate.page = 0; const pos = qi.selectionStart; renderSheet(); const n = $('#dq'); n.focus(); n.setSelectionRange(pos, pos); };
+  box.querySelectorAll('th').forEach(t => t.onclick = () => { const c = +t.dataset.c; if (dstate.sortCol === c) dstate.sortDir *= -1; else { dstate.sortCol = c; dstate.sortDir = 1; } renderSheet(); });
+  $('#dpp').onclick = () => { dstate.page--; renderSheet(); }; $('#dnp').onclick = () => { dstate.page++; renderSheet(); };
+  $('#dcsv').onclick = () => { const b = new Blob([toCSV(head, rows)], {type: 'text/csv'}), a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = s.sheet.replace(/[^\w]+/g, '_') + '.csv'; document.body.appendChild(a); a.click(); a.remove(); };
+}
+$('#flist').addEventListener('click', e => { const b = e.target.closest('button[data-i]'); if (!b) return; dstate.i = b.dataset.i === 'ini' ? 'ini' : +b.dataset.i; dstate.q = ''; dstate.page = 0; dstate.sortCol = null; renderFlist(); renderSheet(); });
+
+/* ------------------------------------------------------------------ tabs / theme / boot */
+const rendered = {};
+function showTab(t) {
+  document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === t));
+  ['data', 'cancer', 'factors'].forEach(n => $('#tab-' + n).hidden = n !== t);
+  hideTip(); store('tab', t);
+  if (!rendered[t]) { rendered[t] = 1; if (t === 'data') { renderFlist(); renderSheet(); } if (t === 'cancer') renderCancer(); if (t === 'factors') renderFactors(); }
+  else if (t === 'factors') renderFactors(); else if (t === 'cancer') renderCancer();
+}
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+$('#theme').onclick = () => { const cur = document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light'); const nx = cur === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = nx; store('theme', nx); };
+{ const th = store('theme'); if (th) document.documentElement.dataset.theme = th; }
+const h = location.hash.replace('#', ''); showTab(['data', 'cancer', 'factors'].includes(h) ? h : 'cancer');
+</script>
+</body>
+</html>

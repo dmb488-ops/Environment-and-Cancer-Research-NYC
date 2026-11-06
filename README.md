@@ -43,3 +43,9 @@ The table's "PUMA Code" (0–54) is a running index, not the Census PUMA code; u
 ## Data sources
 - NYC Spatial-Temporal Cancer Dataset (lung and bronchus incidence, 2010–2023), provided by the research group. Not included in this repository.
 - PUMA boundaries: [nycehs/NYC_geography](https://github.com/nycehs/NYC_geography).
+
+## Interactive explorer
+
+`outputs/NYC_Environment_Cancer_Explorer.html` is a single offline page (open it in any browser): a data browser for all workbooks/CSVs, the 14 yearly lung-cancer incidence maps with click-for-details, and a layered smoking / poverty / uninsured map with a combined burden index.
+Rebuild with `scripts/web/build_data.py` then `scripts/web/assemble.py` (paths at the top of `build_data.py` point at the source files and need adjusting on your machine).
+Caveats: smoking and insurance are UHF34-level and are transferred to the 55 neighborhoods by area overlap (approximate); the Duc workbooks' cancer sheet is all cancers, not lung.
