@@ -23,6 +23,7 @@
   --coast:#5d5b54; --shadow:none;
 }
 *{box-sizing:border-box}
+[hidden]{display:none !important}
 html,body{margin:0}
 body{background:var(--bg);color:var(--ink);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
 h1{font-size:20px;margin:0;letter-spacing:-.01em}
@@ -88,6 +89,13 @@ details > summary{cursor:pointer;font-weight:600;padding:4px 0}
 .layerrow .nm{font-weight:600}
 .layerrow .rg{grid-column:2/4;color:var(--muted);font-size:12px}
 .layerrow input[type=range]{width:90px}
+.llist{max-height:52vh;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:0 8px}
+.lgroup>summary{font-weight:700;padding:8px 0;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface);z-index:1}
+.layerrow{grid-template-columns:auto 1fr auto !important}
+.ctl{display:flex;gap:4px;align-items:center}
+.dirbtn{font-size:11px;border:1px solid var(--line2);background:var(--surface);border-radius:99px;padding:1px 8px;cursor:pointer;color:var(--ink2)}
+.dirbtn:disabled{opacity:.5;cursor:default}
+.ctl select{min-height:26px;padding:1px 4px;font-size:12px}
 .chip{width:12px;height:12px;border-radius:3px;display:inline-block;margin-right:6px;vertical-align:-1px}
 .dgrid>*{min-width:0}
 .dgrid{display:grid;grid-template-columns:290px minmax(0,1fr);gap:16px;align-items:start}
@@ -109,11 +117,12 @@ footer{max-width:1400px;margin:0 auto;padding:0 20px 30px;color:var(--muted);fon
 <body>
 <header>
   <h1>NYC Environment &amp; Cancer Explorer</h1>
-  <div class="sub">How environmental and socioeconomic factors relate to cancer incidence across New York City neighborhoods &middot; research-group working tool</div>
+  <div class="sub">How socioeconomic, green-space, air-quality, food and climate factors relate to cancer incidence across New York City neighborhoods &middot; research-group working tool</div>
   <nav role="tablist" id="tabs">
     <button role="tab" aria-selected="false" data-tab="data">1 &nbsp;Data browser</button>
     <button role="tab" aria-selected="true" data-tab="cancer">2 &nbsp;Cancer incidence maps</button>
-    <button role="tab" aria-selected="false" data-tab="factors">3 &nbsp;Environment &amp; socioeconomic layers</button>
+    <button role="tab" aria-selected="false" data-tab="factors">3 &nbsp;Factor layers</button>
+    <button role="tab" aria-selected="false" data-tab="age">4 &nbsp;Age-adjusted incidence</button>
   </nav>
 </header>
 <main>
@@ -148,7 +157,7 @@ footer{max-width:1400px;margin:0 auto;padding:0 20px 30px;color:var(--muted);fon
       </div>
       <div class="mapwrap" id="c-map"></div>
       <div class="legend" id="c-legend"></div>
-      <div class="small muted" style="margin-top:6px">Crude (not age-adjusted) rate per 100,000 residents. 55 workbook neighborhoods (PUMA-based). Click a neighborhood for details.</div>
+      <div class="small muted" id="c-note" style="margin-top:6px"></div>
       <details style="margin-top:12px" class="card" open>
         <summary>Table view &mdash; all 55 neighborhoods (click a row to select)</summary>
         <div class="tscroll" style="margin-top:8px"><table id="c-table"></table></div>
@@ -164,14 +173,18 @@ footer{max-width:1400px;margin:0 auto;padding:0 20px 30px;color:var(--muted);fon
     <div class="side" style="order:0">
       <div class="card">
         <h2>Layers</h2>
-        <div class="small muted" style="margin-bottom:4px">Switch layers on and off: with one layer the map shows its raw value; with two or more it shows a combined burden index (weighted mean of each layer's percentile rank across the 55 neighborhoods that year). Higher = worse.</div>
-        <div id="f-layers"></div>
+        <div class="small muted" style="margin-bottom:6px">Switch layers on and off. One layer shows its raw value; two or more show a combined burden index (weighted mean percentile rank across the 55 neighborhoods that year). Each layer has a direction (<i>high = worse</i> or <i>high = better</i>) and a weight.</div>
+        <div id="f-presets" class="controls" style="margin-bottom:4px"><span class="small muted">Presets:</span>
+          <button class="btn" data-p="ses">Socioeconomic</button><button class="btn" data-p="air">Air quality</button><button class="btn" data-p="env">Green + air + heat</button><button class="btn" data-p="all">All</button><button class="btn" data-p="none">Clear</button></div>
+        <div id="f-layers" class="llist"></div>
         <h3>Year</h3>
         <div style="display:flex;gap:10px;align-items:center"><input type="range" id="f-year" style="flex:1"><b id="f-yearv" style="min-width:42px;text-align:right"></b></div>
-        <h3>Overlays</h3>
-        <label class="small" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="f-outl" checked> Outline the 20% highest-incidence neighborhoods</label>
+        <h3>Display</h3>
+        <label class="small" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="f-rescale"> Rescale single-layer colours to this year</label>
+        <label class="small" style="display:flex;gap:6px;align-items:center;margin-top:6px"><input type="checkbox" id="f-outl" checked> Outline the 20% highest-incidence neighborhoods</label>
         <div style="margin:6px 0 0 24px"><select id="f-cset" aria-label="Cancer type for outline"></select></div>
-        <label class="small" style="display:flex;gap:6px;align-items:center;margin-top:8px"><input type="checkbox" id="f-uhf"> Show UHF34 boundaries (smoking &amp; insurance source areas)</label>
+        <label class="small" style="display:flex;gap:6px;align-items:center;margin-top:8px">Show source boundaries
+          <select id="f-bound"><option value="none">none</option><option value="uhf">UHF34 areas</option><option value="cd">Community districts</option></select></label>
       </div>
       <div class="card" id="f-stats"></div>
     </div>
@@ -181,6 +194,30 @@ footer{max-width:1400px;margin:0 auto;padding:0 20px 30px;color:var(--muted);fon
       <div id="f-warn"></div>
     </div>
     <div class="side" style="order:2"><div class="card" id="f-info"></div></div>
+  </div>
+</section>
+
+<!-- ============================================================ TAB 4 -->
+<section class="tab" id="tab-age" hidden>
+  <div class="row">
+    <div class="mapcol">
+      <div class="controls">
+        <label>Cancer site <select id="a-site"></select></label>
+        <label>Period <select id="a-year"></select></label>
+        <span class="small" style="display:flex;gap:10px;align-items:center">Show
+          <label style="gap:4px"><input type="radio" name="a-meas" value="aa" checked> age-adjusted</label>
+          <label style="gap:4px"><input type="radio" name="a-meas" value="cr"> crude</label></span>
+      </div>
+      <div class="mapwrap" id="a-map"></div>
+      <div class="legend" id="a-legend"></div>
+      <div class="small" id="a-sum" style="margin-top:8px"></div>
+      <div class="note" style="margin-top:8px">From the SEER*Stat export (NYS Cancer Registry public-use data, 2010–2023, NYC PUMAs). Age-adjusted by the direct method to the 2000 US standard population; <b>both sexes combined</b> (the export has no sex split, so sex-specific sites such as breast, prostate and cervix are left out). 95% intervals use the Fay–Feuer gamma method. Single years have few cases per neighborhood and wide intervals; 2020 is low everywhere (pandemic-era diagnosis dip).</div>
+      <details style="margin-top:12px" class="card" open>
+        <summary>Table view &mdash; all 55 neighborhoods (click a row to select, a header to sort)</summary>
+        <div class="tscroll" style="margin-top:8px"><table id="a-table"></table></div>
+      </details>
+    </div>
+    <div class="side"><div class="card" id="a-info"></div></div>
   </div>
 </section>
 </main>
@@ -200,8 +237,8 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;
 const fmt = (v, d = 1) => v == null ? '–' : Number(v).toLocaleString('en-US', {minimumFractionDigits: d, maximumFractionDigits: d});
 const YEARS = D.YEARS, N = 55;
 const BLUE = ["#cde2fb","#9ec5f4","#6da7ec","#3987e5","#256abf","#184f95","#0d366b"];
+const GREEN = ["#e3f2dc","#c3e5b4","#9ad18c","#6dba68","#41a04b","#2a7a38","#17542a"];
 const ORANGE = ["#fdebd3","#fbd0a1","#f6b06b","#ee8a3a","#d1661c","#a14a14","#6f330e"];
-const LAYERCOL = {smoke:'#8a5a2b', pov:'#c0392b', ins:'#2f6f8f'};
 let sel = null;                                  // shared selected unit id
 const store = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) {} return null; };
 
@@ -244,8 +281,7 @@ function makeMap(host, o) {
   svg.appendChild(gU);
   svg.appendChild(svgEl('path', {d: D.internal, class: 'inner'}));
   svg.appendChild(svgEl('path', {d: D.coast, class: 'coast'}));
-  const gUhf = svgEl('g', {style: 'display:none'});
-  D.uhf.forEach(x => gUhf.appendChild(svgEl('path', {d: x.d, class: 'uhfline', 'fill-rule': 'evenodd'})));
+  const gUhf = svgEl('g', {});
   svg.appendChild(gUhf);
   const outl = svgEl('path', {class: 'outl', d: '', 'fill-rule': 'evenodd'}); svg.appendChild(outl);
   const selp = svgEl('path', {class: 'selp', d: '', 'fill-rule': 'evenodd'}); svg.appendChild(selp);
@@ -255,7 +291,7 @@ function makeMap(host, o) {
     paint(fills) { paths.forEach((p, i) => { p.setAttribute('fill', fills[i]); p.setAttribute('aria-label', o.aria(i)); }); },
     select(id) { selp.setAttribute('d', id == null ? '' : U[id].d); },
     outline(ids) { outl.setAttribute('d', ids.map(i => U[i].d).join('')); },
-    uhf(on) { gUhf.style.display = on ? '' : 'none'; }
+    bounds(ds) { const key = ds.length + ':' + (ds[0] || '').length; if (gUhf.dataset.k === key) return; gUhf.dataset.k = key; gUhf.innerHTML = ''; ds.forEach(d => gUhf.appendChild(svgEl('path', {d, class: 'uhfline', 'fill-rule': 'evenodd'}))); }
   };
 }
 function legend(host, title, items, extra) {
@@ -280,21 +316,34 @@ const CAN = {
     nyc, nycAvg: mean(avg), breaks: br, labels: lab};
 })();
 
+D.seer.sites.forEach(S => {
+  const all = [].concat(...S.aa), med = quantile(all, .5), step = med >= 100 ? 10 : med >= 30 ? 5 : med >= 10 ? 2 : med >= 3 ? 1 : med >= 1 ? .5 : .1, dec = step < 1 ? 1 : 0;
+  const br = niceBreaks(all, {step}), f = v => fmt(v, dec);
+  CAN['aa_' + S.key] = {aa: true, key: S.key, label: `${S.name}, age-adjusted to the 2000 US standard population, both sexes (SEER*Stat export)`, short: `${S.name} · age-adjusted`,
+    rate: S.aa, cases: S.cnt, avg: S.aaP, total: S.cntP, nyc: S.nycAA, nycAvg: S.nycAAP, breaks: br,
+    labels: [`< ${f(br[0])}`, ...br.slice(1).map((b, i) => `${f(br[i])}–${f(b)}`), `${f(br[5])} +`]};
+});
+function canOptions() {
+  const o = k => `<option value="${k}">${esc(CAN[k].short)}</option>`;
+  return `<optgroup label="Crude rates (workbooks)">${['lung', 'all'].map(o).join('')}</optgroup><optgroup label="Age-adjusted (SEER*Stat export)">${Object.keys(CAN).filter(k => CAN[k].aa).map(o).join('')}</optgroup>`;
+}
+
 /* ------------------------------------------------------------------ factor engine */
-const LAYERS = {
-  smoke: {name: 'Smoking', unit: '% of adults who smoke', src: 'NYC Community Health Survey, UHF34 areas', years: D.smoke.years},
-  pov:   {name: 'Poverty', unit: '% of residents below poverty line', src: 'ACS 5-year estimates, PUMA/sub-borough', years: [2010, 2023]},
-  ins:   {name: 'No health insurance', unit: '% of residents uninsured (100 − insured %)', src: 'NYC Community Health Survey, UHF34 areas', years: D.ins.years},
-};
+const LAYERS = {}, LKEYS = [], GROUPS = [];
+D.layers.forEach(L => { LAYERS[L.key] = L; LKEYS.push(L.key); if (!GROUPS.includes(L.group)) GROUPS.push(L.group); });
+const fv = (key, v) => v == null ? '–' : fmt(v, LAYERS[key].dec) + LAYERS[key].suffix;
+const partName = (L, j) => L.geo === 'uhf' ? D.uhfNames[j] : D.cd[j].name;
 const fcache = {};
-function uhfBased(key, y) {
-  const S = D[key], idx = S.years.indexOf(y); if (idx < 0) return null;
+function geoBased(key, y) {
+  const L = LAYERS[key], S = D.series[key], idx = S.years.indexOf(y); if (idx < 0) return null;
+  if (L.geo === 'puma') return U.map((_, u) => { const v = S.v[u][idx]; return v == null ? null : {v}; });
+  const W = L.geo === 'uhf' ? D.weights : D.cdW, codes = L.geo === 'uhf' ? D.uhfCodes : D.cd.map(c => String(c.code));
   return U.map((_, u) => {
-    let sw = 0, sv = 0, parts = [];
-    D.weights[u].forEach(([j, w]) => {
-      const cell = S.v[D.uhfCodes[j]][idx]; if (!cell || cell[0] == null) return;
+    let sw = 0, sv = 0; const parts = [];
+    W[u].forEach(([j, w]) => {
+      const cell = S.v[codes[j]][idx]; if (!cell || cell[0] == null) return;
       const v = key === 'ins' ? 100 - cell[0] : cell[0];
-      sw += w; sv += w * v; parts.push({j, w, v, flag: cell[1], lo: cell[2], hi: cell[3]});
+      sw += w; sv += w * v; parts.push({j, w, v, flag: cell[1] || 0});
     });
     parts.forEach(p => p.w /= sw);
     return sw ? {v: sv / sw, parts} : null;
@@ -311,21 +360,26 @@ function povAt(y) {
 }
 function factor(key, y) {
   const k = key + y; if (k in fcache) return fcache[k];
-  return fcache[k] = key === 'pov' ? povAt(y) : uhfBased(key, y);
+  return fcache[k] = key === 'pov' ? povAt(y) : geoBased(key, y);
 }
-// pooled quantile breaks per layer (comparable across years)
-const SBREAKS = {};
-Object.keys(LAYERS).forEach(key => {
+function niceBreaks(vals, L) {
+  const br = [1, 2, 3, 4, 5, 6].map(k => Math.round(quantile(vals, k / 7) / L.step) * L.step);
+  for (let i = 1; i < 6; i++) if (br[i] <= br[i - 1]) br[i] = br[i - 1] + L.step;
+  return br.map(b => +b.toFixed(4));
+}
+function labelsFor(br, L) { const f = v => fmt(v, L.dec); return [`< ${f(br[0])}`, ...br.slice(1).map((b, i) => `${f(br[i])}–${f(b)}`), `${f(br[5])} +`]; }
+const pooledCache = {};
+function pooledBreaks(key) {   // pooled over all map years, so colours are comparable across years
+  if (pooledCache[key]) return pooledCache[key];
   const all = []; YEARS.forEach(y => { const f = factor(key, y); if (f) f.forEach(x => x && all.push(x.v)); });
-  SBREAKS[key] = [1,2,3,4,5,6].map(k => Math.round(quantile(all, k / 7) * 2) / 2);
-  LAYERS[key].all = all;
-});
+  return pooledCache[key] = niceBreaks(all, LAYERS[key]);
+}
 
 /* ------------------------------------------------------------------ TAB 2 : cancer maps */
 const cstate = {y: 2023, set: 'lung', playing: null};
 const cyear = $('#c-year'), cset = $('#c-set');
 cyear.innerHTML = YEARS.slice().reverse().map(y => `<option value="${y}">${y}</option>`).join('') + '<option value="avg">2010–2023 average (14-yr)</option>';
-cset.innerHTML = Object.entries(CAN).map(([k, v]) => `<option value="${k}">${esc(v.short)}</option>`).join('');
+cset.innerHTML = canOptions();
 cyear.value = String(cstate.y);
 function cVal(set, u, y) { const d = CAN[set]; return y === 'avg' ? d.avg[u] : d.rate[u][YEARS.indexOf(+y)]; }
 function cCases(set, u, y) { const d = CAN[set]; return y === 'avg' ? d.total[u] : d.cases[u][YEARS.indexOf(+y)]; }
@@ -340,6 +394,7 @@ function renderCancer() {
   const d = CAN[cstate.set], y = cstate.y;
   const vals = U.map((_, u) => cVal(cstate.set, u, y));
   cmap.paint(vals.map(v => BLUE[classOf(v, d.breaks)]));
+  $('#c-note').textContent = d.aa ? 'Age-adjusted rate per 100,000 (2000 US standard population, both sexes) from the SEER*Stat export, so neighborhoods with older or younger residents are compared fairly. Click a neighborhood for details.' : 'Crude (not age-adjusted) rate per 100,000 residents. 55 workbook neighborhoods (PUMA-based). Click a neighborhood for details.';
   const counts = new Array(7).fill(0); vals.forEach(v => counts[classOf(v, d.breaks)]++);
   legend($('#c-legend'), `${d.short} incidence, ${y === 'avg' ? '2010–2023 pooled average' : y} (per 100,000) · number of neighborhoods in each class`,
     d.labels.map((l, i) => ({c: BLUE[i], t: `${l} (${counts[i]})`})));
@@ -370,10 +425,11 @@ function spark(series, nyc, yi, color) {
   [0, 4, 8, 13].forEach(i => s += `<text x="${X(i)}" y="${h - 4}" text-anchor="middle">${YEARS[i]}</text>`);
   return s + '</svg>';
 }
+const CONTEXT = ['smoke', 'pov', 'ins', 'ndvi', 'pm25', 'no2'];
 function factorLines(u, y) {
-  return Object.keys(LAYERS).map(k => {
-    const yrs = LAYERS[k].years, yy = Math.min(Math.max(y, yrs[0]), yrs[yrs.length - 1]), f = factor(k, yy), c = f && f[u];
-    return `<dt><span class="chip" style="background:${LAYERCOL[k]}"></span>${LAYERS[k].name}</dt><dd>${c ? fmt(c.v) + '%' + (yy !== y ? ` <span class="muted">(${yy})</span>` : '') : '<span class="muted">no data</span>'}</dd>`;
+  return CONTEXT.map(k => {
+    const L = LAYERS[k], yy = Math.min(Math.max(y, L.years[0]), L.years[1]), f = factor(k, yy), c = f && f[u];
+    return `<dt><span class="chip" style="background:${L.color}"></span>${esc(L.name)}</dt><dd>${c ? fv(k, c.v) + (yy !== y ? ` <span class="muted">(${yy})</span>` : '') : '<span class="muted">no data</span>'}</dd>`;
   }).join('');
 }
 function renderCancerSel() {
@@ -423,33 +479,82 @@ $('#c-play').onclick = () => {
 };
 
 /* ------------------------------------------------------------------ TAB 3 : factor layers */
-const fstate = {on: {smoke: true, pov: true, ins: false}, w: {smoke: 1, pov: 1, ins: 1}, y: 2019, outl: true, cset: 'lung', uhf: false};
+const fstate = {on: {smoke: true, pov: true}, w: {}, dir: {}, y: 2019, outl: true, cset: 'aa_lung', bound: 'none', rescale: false, open: {}};
+LKEYS.forEach(k => { fstate.w[k] = 1; fstate.dir[k] = LAYERS[k].dir; });
+fstate.open[GROUPS[0]] = true;
 const fy = $('#f-year'); fy.min = 2010; fy.max = 2023; fy.value = fstate.y;
-$('#f-cset').innerHTML = Object.entries(CAN).map(([k, v]) => `<option value="${k}">${esc(v.short)}</option>`).join('');
+$('#f-cset').innerHTML = canOptions(); $('#f-cset').value = fstate.cset;
+const PRESETS = {
+  ses: ['smoke', 'pov', 'ins'],
+  air: ['no2', 'no', 'pm25', 'bc', 'o3'],
+  env: ['ndvi', 'pm25', 'no2', 'tmax'],
+  all: LKEYS.filter(k => k !== 'so2')
+};
 function buildLayerUI() {
-  $('#f-layers').innerHTML = Object.keys(LAYERS).map(k => {
-    const L = LAYERS[k], has = !!factor(k, fstate.y);
-    return `<div class="layerrow"><input type="checkbox" id="L-${k}" ${fstate.on[k] ? 'checked' : ''} aria-label="${L.name}">
-      <label for="L-${k}" class="nm"><span class="chip" style="background:${LAYERCOL[k]}"></span>${L.name}${has ? '' : ' <span class="tag" style="background:var(--warn-bg);color:var(--warn)">no data this year</span>'}</label>
-      <span class="small" title="Relative weight in the combined index"><input type="range" min="1" max="5" step="1" value="${fstate.w[k]}" data-w="${k}" aria-label="${L.name} weight" ${fstate.on[k] ? '' : 'disabled'}> ×${fstate.w[k]}</span>
-      <div class="rg">${esc(L.unit)} · ${esc(L.src)}${k === 'smoke' ? ' · 2003–2022' : k === 'ins' ? ' · 2012–2022' : ' · windows 2007-11 … 2019-23'}</div></div>`;
+  const box = $('#f-layers');
+  box.innerHTML = GROUPS.map(gr => {
+    const ks = LKEYS.filter(k => LAYERS[k].group === gr);
+    return `<details class="lgroup" data-g="${esc(gr)}" ${fstate.open[gr] ? 'open' : ''}><summary>${esc(gr)} <span class="tag gcount"></span></summary>` + ks.map(k => {
+      const L = LAYERS[k], yr = L.years[0] + '–' + L.years[1];
+      return `<div class="layerrow" data-k="${k}"><input type="checkbox" id="L-${k}" aria-label="${esc(L.name)}">
+        <label for="L-${k}" class="nm"><span class="chip" style="background:${L.color}"></span>${esc(L.name)} <span class="tag nd" hidden>no data this year</span></label>
+        <span class="ctl"><button class="dirbtn" data-dir="${k}" title="Direction used in the combined index"></button>
+        <select data-w="${k}" aria-label="${esc(L.name)} weight" title="Weight in the combined index">${[1, 2, 3, 4, 5].map(n => `<option value="${n}">×${n}</option>`).join('')}</select></span>
+        <div class="rg">${esc(L.unit)} · ${esc(L.src)} · ${yr}${L.hint ? '<br>' + esc(L.hint) : ''}</div></div>`;
+    }).join('') + '</details>';
   }).join('');
-  document.querySelectorAll('#f-layers input[type=checkbox]').forEach(c => c.onchange = () => { fstate.on[c.id.slice(2)] = c.checked; renderFactors(); });
-  document.querySelectorAll('#f-layers input[type=range]').forEach(c => c.oninput = () => { fstate.w[c.dataset.w] = +c.value; renderFactors(); });
+  box.querySelectorAll('details').forEach(d => d.addEventListener('toggle', () => { fstate.open[d.dataset.g] = d.open; }));
 }
-function activeLayers() { return Object.keys(LAYERS).filter(k => fstate.on[k] && factor(k, fstate.y)); }
+function updateLayerUI() {
+  LKEYS.forEach(k => {
+    const row = $(`.layerrow[data-k="${k}"]`), has = !!factor(k, fstate.y);
+    $('input[type=checkbox]', row).checked = !!fstate.on[k];
+    $('.nd', row).hidden = has;
+    const sel = $('select', row); sel.value = fstate.w[k]; sel.disabled = !fstate.on[k];
+    const b = $('.dirbtn', row); b.textContent = fstate.dir[k] > 0 ? 'high = worse' : 'high = better'; b.disabled = !fstate.on[k];
+    row.style.opacity = fstate.on[k] ? 1 : .8;
+  });
+  document.querySelectorAll('#f-layers details').forEach(d => {
+    const n = LKEYS.filter(k => LAYERS[k].group === d.dataset.g && fstate.on[k]).length;
+    const t = $('.gcount', d); t.textContent = n ? n + ' on' : ''; t.style.display = n ? '' : 'none';
+  });
+}
+$('#f-layers').addEventListener('change', e => {
+  const t = e.target;
+  if (t.matches('input[type=checkbox]')) fstate.on[t.id.slice(2)] = t.checked;
+  else if (t.matches('select[data-w]')) fstate.w[t.dataset.w] = +t.value;
+  renderFactors();
+});
+$('#f-layers').addEventListener('click', e => {
+  const b = e.target.closest('button[data-dir]'); if (!b) return;
+  fstate.dir[b.dataset.dir] *= -1; renderFactors();
+});
+$('#f-presets').addEventListener('click', e => {
+  const b = e.target.closest('button[data-p]'); if (!b) return;
+  fstate.on = {}; (PRESETS[b.dataset.p] || []).forEach(k => fstate.on[k] = true);
+  GROUPS.forEach(gr => { if (LKEYS.some(k => LAYERS[k].group === gr && fstate.on[k])) fstate.open[gr] = true; });
+  document.querySelectorAll('#f-layers details').forEach(d => d.open = !!fstate.open[d.dataset.g]);
+  renderFactors();
+});
+function activeLayers() { return LKEYS.filter(k => fstate.on[k] && factor(k, fstate.y)); }
 function fComputed() {
   const y = fstate.y, act = activeLayers(), per = {}, pct = {};
-  act.forEach(k => { per[k] = factor(k, y); const v = per[k].map(x => x ? x.v : null); const ok = v.map(x => x == null ? null : x); const idx = ok.map((x, i) => x == null ? -1 : i).filter(i => i >= 0); const pr = pctRank(idx.map(i => ok[i])); pct[k] = new Array(N).fill(null); idx.forEach((i, j) => pct[k][i] = pr[j]); });
+  act.forEach(k => {
+    per[k] = factor(k, y);
+    const idx = per[k].map((x, i) => x ? i : -1).filter(i => i >= 0), pr = pctRank(idx.map(i => per[k][i].v));
+    pct[k] = new Array(N).fill(null); idx.forEach((i, j) => pct[k][i] = fstate.dir[k] > 0 ? pr[j] : 100 - pr[j]);
+  });
   const comp = U.map((_, u) => { let sw = 0, s = 0; act.forEach(k => { if (pct[k][u] != null) { sw += fstate.w[k]; s += fstate.w[k] * pct[k][u]; } }); return sw ? s / sw : null; });
   let vals = null, br = null, labels = null, title = '';
   if (act.length === 1) {
-    const k = act[0]; vals = per[k].map(x => x ? x.v : null); br = SBREAKS[k];
-    labels = [`< ${br[0]}`, ...br.slice(1).map((b, i) => `${br[i]}–${b}`), `${br[5]} +`].map(s => s + '%');
-    title = `${LAYERS[k].name}: ${LAYERS[k].unit}, ${y}`;
+    const k = act[0], L = LAYERS[k]; vals = per[k].map(x => x ? x.v : null);
+    br = fstate.rescale ? niceBreaks(vals.filter(v => v != null), L) : pooledBreaks(k);
+    labels = labelsFor(br, L);
+    title = `${L.name}: ${L.unit}, ${y}${fstate.rescale ? ' · colours rescaled to this year' : ' · colour classes shared across years'}`;
   } else if (act.length > 1) {
-    vals = comp; br = [1,2,3,4,5,6].map(k => k * 100 / 7); labels = ['Lowest 1/7','2','3','4','5','6','Highest 1/7'];
-    title = `Combined burden index (${act.map(k => LAYERS[k].name.toLowerCase() + (fstate.w[k] > 1 ? ' ×' + fstate.w[k] : '')).join(' + ')}), ${y} — weighted mean percentile rank`;
+    vals = comp; { const cv = comp.filter(v => v != null); br = [1, 2, 3, 4, 5, 6].map(k => +quantile(cv, k / 7).toFixed(2)); } labels = ['Lowest 1/7', '2', '3', '4', '5', '6', 'Highest 1/7'];
+    const nm = act.map(k => LAYERS[k].name + (fstate.dir[k] < 0 ? ' (inverted)' : '') + (fstate.w[k] > 1 ? ' ×' + fstate.w[k] : ''));
+    title = `Combined burden index — ${nm.length > 4 ? nm.slice(0, 3).join(' + ') + ` + ${nm.length - 3} more` : nm.join(' + ')}, ${y} · weighted mean percentile rank · classes = sevenths of neighborhoods`;
   }
   return {act, per, pct, comp, vals, br, labels, title};
 }
@@ -460,69 +565,185 @@ const fmap = makeMap($('#f-map'), {
   onSelect: id => { sel = id; renderFactorSel(); renderCancerSel(); },
   tip: u => {
     if (!FC) return esc(U[u].name);
-    const lines = FC.act.map(k => `${LAYERS[k].name}: ${fmt(FC.per[k][u] && FC.per[k][u].v)}%`);
+    const lines = FC.act.slice(0, 4).map(k => `${LAYERS[k].name}: ${fv(k, FC.per[k][u] && FC.per[k][u].v)}`);
+    if (FC.act.length > 4) lines.push(`+${FC.act.length - 4} more`);
     return `<b>${esc(U[u].name)}</b>${U[u].borough}<br>${lines.join('<br>')}${FC.act.length > 1 ? `<br>Index: ${fmt(FC.comp[u], 0)}/100` : ''}`;
   },
   aria: i => FC && FC.vals && FC.vals[i] != null ? `${U[i].name}: ${fmt(FC.vals[i])}` : `${U[i].name}: no data`
 });
 function renderFactors() {
   const y = fstate.y; $('#f-yearv').textContent = y;
-  buildLayerUI();
+  updateLayerUI();
   FC = fComputed();
   if (!FC.vals) {
     fmap.paint(U.map(() => 'var(--line)'));
-    legend($('#f-legend'), 'No layer active — switch a layer on to colour the map', []);
+    legend($('#f-legend'), 'No layer active — switch a layer on (or pick a preset) to colour the map', []);
   } else {
-    fmap.paint(FC.vals.map(v => v == null ? '#cfcdc4' : ORANGE[classOf(v, FC.br)]));
+    const RAMP = FC.act.length === 1 && fstate.dir[FC.act[0]] < 0 ? GREEN : ORANGE;
+    fmap.paint(FC.vals.map(v => v == null ? '#cfcdc4' : RAMP[classOf(v, FC.br)]));
     const counts = new Array(7).fill(0); FC.vals.forEach(v => v != null && counts[classOf(v, FC.br)]++);
-    legend($('#f-legend'), FC.title, FC.labels.map((l, i) => ({c: ORANGE[i], t: `${l} (${counts[i]})`})),
+    legend($('#f-legend'), FC.title, FC.labels.map((l, i) => ({c: RAMP[i], t: `${l} (${counts[i]})`})),
       fstate.outl ? `<span class="sw"><i style="background:none;border:3px solid var(--accent)"></i>Top 20% ${esc(CAN[fstate.cset].short.toLowerCase())} incidence, ${y}</span>` : '');
   }
   fmap.outline(fstate.outl ? topSet() : []);
-  fmap.uhf(fstate.uhf);
-  // warnings
+  fmap.bounds(fstate.bound === 'uhf' ? D.uhf.map(x => x.d) : fstate.bound === 'cd' ? D.cd.map(x => x.d) : []);
   const w = [];
-  Object.keys(LAYERS).forEach(k => { if (fstate.on[k] && !factor(k, y)) w.push(`${LAYERS[k].name} has no data for ${y} (available ${LAYERS[k].years[0]}–${LAYERS[k].years[LAYERS[k].years.length - 1]}) and is left out of the map.`); });
+  LKEYS.forEach(k => { if (fstate.on[k] && !factor(k, y)) w.push(`${LAYERS[k].name} has no data for ${y} (available ${LAYERS[k].years[0]}–${LAYERS[k].years[1]}) and is left out of the map.`); });
   if (fstate.on.pov && factor('pov', y) && !factor('pov', y)[0].exact) w.push(`Poverty for ${y}: the exact 5-year ACS window centred on ${y} is not in the file, so the nearest available window (${factor('pov', y)[0].win}) is shown.`);
-  if ((fstate.on.smoke || fstate.on.ins) ) w.push('Smoking and insurance are measured for 34 UHF areas, not for the 55 neighborhoods: each neighborhood gets the area-weighted blend of the UHF areas it overlaps (turn on the UHF34 boundaries to see them). Treat it as an approximation.');
+  const on = activeLayers();
+  if (on.some(k => LAYERS[k].geo === 'uhf')) w.push('Smoking, insurance and NDVI are measured for 34 UHF areas, not for the 55 neighborhoods: each neighborhood gets the area-weighted blend of the UHF areas it overlaps. Approximation.');
+  if (on.some(k => LAYERS[k].geo === 'cd')) w.push('Air-quality values are published per community district (59); each neighborhood gets the area-weighted blend of the districts it overlaps (27 of 55 are ≥95% one district). Parks without a district value are ignored.');
+  if (on.some(k => ['tmean', 'tmax', 'precip'].includes(k))) w.push('Climate: PRISM changes its reference climatology in 2021, so small step changes around 2021 can be method, not weather.');
+  if (on.some(k => ['snap', 'super', 'conv'].includes(k))) w.push('Food: counts of USDA SNAP-authorised stores on 31 December, divided by neighborhood area. Not every grocery store accepts SNAP, so these are a proxy for food access.');
+  if (on.length > 1 && on.some(k => fstate.dir[k] !== LAYERS[k].dir)) w.push('You flipped the direction of at least one layer; the combined index uses your setting.');
   $('#f-warn').innerHTML = w.map(t => `<div class="note">${esc(t)}</div>`).join('');
-  // stats
-  const cv = U.map((_, u) => CAN[fstate.cset].rate[u][YEARS.indexOf(y)]);
-  let st = `<h2>Does the pattern line up with cancer?</h2><div class="small muted" style="margin-bottom:6px">Spearman rank correlation with ${esc(CAN[fstate.cset].short.toLowerCase())} incidence in ${y} across the 55 neighborhoods. Ecological, crude rates — not causal.</div><table><tbody>`;
-  FC.act.forEach(k => { const r = spearman(FC.per[k].map(x => x && x.v), cv); st += `<tr><td><span class="chip" style="background:${LAYERCOL[k]}"></span>${LAYERS[k].name}</td><td class="n">${r ? 'ρ = ' + fmt(r.rho, 2) : '–'}</td></tr>`; });
-  if (FC.act.length > 1) { const r = spearman(FC.comp, cv); st += `<tr><td><b>Combined index</b></td><td class="n"><b>${r ? 'ρ = ' + fmt(r.rho, 2) : '–'}</b></td></tr>`; }
-  if (!FC.act.length) st += '<tr><td class="muted">No layer active</td><td></td></tr>';
+  const yi = YEARS.indexOf(y), cols = ['lung', 'aa_lung']; if (!cols.includes(fstate.cset)) cols.push(fstate.cset);
+  const cvs = cols.map(k => U.map((_, u) => CAN[k].rate[u][yi])), rho = v => { const r = spearman(v[0], v[1]); return r ? fmt(r.rho, 2) : '–'; };
+  let st = `<h2>Does the pattern line up with cancer?</h2><div class="small muted" style="margin-bottom:6px">Spearman rank correlation (ρ) between each layer and incidence in ${y} across the 55 neighborhoods (raw layer values, not flipped). Compare the crude and age-adjusted columns: the gap is the effect of age. Ecological, not causal. About |ρ| &lt; 0.27 cannot be told from zero with 55 areas.</div><table><thead><tr><th>Layer</th>${cols.map(k => `<th class="n" style="cursor:default" title="${esc(CAN[k].label)}">${k === 'lung' ? 'Lung · crude' : k === 'aa_lung' ? 'Lung · age-adj.' : esc(CAN[k].short.replace(' · age-adjusted', ' · adj.'))}</th>`).join('')}</tr></thead><tbody>`;
+  FC.act.forEach(k => { const lv = FC.per[k].map(x => x && x.v); st += `<tr><td><span class="chip" style="background:${LAYERS[k].color}"></span>${esc(LAYERS[k].name)}</td>${cvs.map(cv => `<td class="n">${rho([lv, cv])}</td>`).join('')}</tr>`; });
+  if (FC.act.length > 1) st += `<tr><td><b>Combined index</b></td>${cvs.map(cv => `<td class="n"><b>${rho([FC.comp, cv])}</b></td>`).join('')}</tr>`;
+  if (!FC.act.length) st += '<tr><td class="muted">No layer active</td></tr>';
   $('#f-stats').innerHTML = st + '</tbody></table>';
   renderFactorSel();
+}
+function layerDetail(k, u, y) {
+  const L = LAYERS[k], f = factor(k, y), c = f && f[u];
+  let h = `<div style="padding:7px 0;border-bottom:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:8px"><b><span class="chip" style="background:${L.color}"></span>${esc(L.name)}</b><span>${c ? fv(k, c.v) : '<span class="muted">no data</span>'}</span></div>`;
+  if (c) {
+    const all = f.map(x => x && x.v).filter(x => x != null), rk = 1 + all.filter(x => x > c.v).length;
+    h += `<div class="small muted">Rank ${rk} of ${all.length} (1 = highest) · median ${fv(k, quantile(all, .5))}</div>`;
+    if (k === 'pov') h += `<div class="small muted">ACS window ${c.win}${c.exact ? '' : ' (nearest to ' + y + ')'}${c.approx ? ' · Midtown split: blended from the two old sub-boroughs' : ''}</div>`;
+    else if (L.geo === 'puma') h += `<div class="small muted">Measured directly for this neighborhood (PUMA)</div>`;
+    else h += `<div class="small muted">From ${L.geo === 'uhf' ? 'UHF34' : 'community districts'}: ` + c.parts.slice().sort((a, b) => b.w - a.w).slice(0, 3).map(p => `${esc(partName(L, p.j))} ${fmt(p.w * 100, 0)}% (${fv(k, p.v)}${p.flag ? '*' : ''})`).join('; ') + (c.parts.some(p => p.flag) ? '<br>* statistically unstable estimate in source' : '') + '</div>';
+  }
+  return h + '</div>';
 }
 function renderFactorSel() {
   fmap.select(sel);
   const box = $('#f-info'); if (!FC) return;
-  if (sel == null) { box.innerHTML = `<h2>Select a neighborhood</h2><p class="small">Click a neighborhood to see each layer's value, how it ranks, and which source areas it was built from.</p>`; return; }
+  if (sel == null) { box.innerHTML = `<h2>Select a neighborhood</h2><p class="small">Click a neighborhood to see each active layer's value, how it ranks, and which source areas it was built from.</p>`; return; }
   const u = sel, y = fstate.y, d = CAN[fstate.cset];
   let h = `<div class="unit">${U[u].borough}${U[u].puma ? ' · PUMA ' + U[u].puma : ''}</div><h2 style="font-size:18px;margin:2px 0 8px">${esc(U[u].name)} <span class="unit">· ${y}</span></h2>`;
   if (FC.act.length > 1) h += `<div class="big">${fmt(FC.comp[u], 0)}<span class="unit"> / 100 combined index</span></div><div class="small muted">Higher = more of the selected burdens relative to other neighborhoods.</div>`;
-  h += '<h3>Layers</h3>';
-  Object.keys(LAYERS).forEach(k => {
-    const f = factor(k, y), c = f && f[u], on = fstate.on[k];
-    h += `<div style="padding:7px 0;border-bottom:1px solid var(--line);opacity:${on ? 1 : .55}"><div style="display:flex;justify-content:space-between"><b><span class="chip" style="background:${LAYERCOL[k]}"></span>${LAYERS[k].name}</b><span>${c ? fmt(c.v) + '%' : '<span class="muted">no data</span>'}</span></div>`;
-    if (c) {
-      const all = f.map(x => x && x.v).filter(x => x != null), rk = 1 + all.filter(x => x > c.v).length;
-      h += `<div class="small muted">Rank ${rk} of ${all.length} (1 = highest) · NYC neighborhood median ${fmt(quantile(all, .5))}%</div>`;
-      if (k === 'pov') h += `<div class="small muted">ACS window ${c.win}${c.exact ? '' : ' (nearest to ' + y + ')'}${c.approx ? ' · Midtown split: blended from the two old sub-boroughs' : ''}</div>`;
-      else h += `<div class="small muted">From UHF34: ` + c.parts.sort((a, b) => b.w - a.w).slice(0, 3).map(p => `${esc(D.uhfNames[p.j])} ${fmt(p.w * 100, 0)}% (${fmt(p.v)}%${p.flag ? '*' : ''})`).join('; ') + (c.parts.some(p => p.flag) ? '<br>* statistically unstable estimate in source' : '') + '</div>';
-    }
-    h += '</div>';
-  });
+  h += '<h3>Active layers</h3>' + (FC.act.length ? FC.act.map(k => layerDetail(k, u, y)).join('') : '<div class="small muted">None</div>');
+  const rest = LKEYS.filter(k => !FC.act.includes(k));
+  if (rest.length) h += `<details style="margin-top:8px"><summary class="small">Other layers (${rest.length})</summary>${rest.map(k => layerDetail(k, u, y)).join('')}</details>`;
   const cv = d.rate[u][YEARS.indexOf(y)];
   h += `<h3>${esc(d.short)} incidence</h3><div class="big">${fmt(cv)} <span class="unit">per 100,000 · ${y}</span></div><div class="small muted">Rank ${1 + U.filter((_, i) => d.rate[i][YEARS.indexOf(y)] > cv).length} of 55 · ${fmt(CAN[fstate.cset].total[u], 0)} cases 2010–2023</div>`;
   h += `<div style="margin-top:8px">${spark(d.rate[u], d.nyc, YEARS.indexOf(y), 'var(--accent)')}</div>`;
   box.innerHTML = h;
 }
+buildLayerUI();
+
 fy.oninput = () => { fstate.y = +fy.value; renderFactors(); };
 $('#f-outl').onchange = e => { fstate.outl = e.target.checked; renderFactors(); };
-$('#f-uhf').onchange = e => { fstate.uhf = e.target.checked; renderFactors(); };
+$('#f-bound').onchange = e => { fstate.bound = e.target.value; renderFactors(); };
+$('#f-rescale').onchange = e => { fstate.rescale = e.target.checked; renderFactors(); };
 $('#f-cset').onchange = e => { fstate.cset = e.target.value; renderFactors(); };
+
+/* ------------------------------------------------------------------ TAB 4 : age-adjusted incidence */
+const astate = {site: 'lung', y: 'pool', meas: 'aa'};
+const aS = () => D.seer.sites.find(s => s.key === astate.site);
+$('#a-site').innerHTML = D.seer.sites.map(s => `<option value="${s.key}">${esc(s.name)}</option>`).join('');
+$('#a-year').innerHTML = '<option value="pool">2010–2023 pooled</option>' + YEARS.slice().reverse().map(y => `<option value="${y}">${y}</option>`).join('');
+$('#a-site').value = astate.site;
+const yIdx = () => astate.y === 'pool' ? -1 : YEARS.indexOf(+astate.y);
+function aGet(S, u, kind, i = yIdx()) {   // kind: aa | lo | hi | cr | cnt
+  if (i < 0) return {aa: S.aaP, lo: S.loP, hi: S.hiP, cr: S.crP, cnt: S.cntP}[kind][u];
+  return S[kind][u][i];
+}
+const aPop = (u, i = yIdx()) => i < 0 ? D.seer.pop[u].reduce((a, b) => a + b, 0) : D.seer.pop[u][i];
+const aBrCache = {};
+function aBreaks(S) {
+  if (aBrCache[S.key]) return aBrCache[S.key];
+  const all = [].concat(...S.aa, ...S.cr), med = quantile(all, .5);
+  const step = med >= 100 ? 10 : med >= 30 ? 5 : med >= 10 ? 2 : med >= 3 ? 1 : med >= 1 ? .5 : .1;
+  return aBrCache[S.key] = {br: niceBreaks(all, {step}), dec: step < 1 ? 1 : 0};
+}
+function aRanks(S, kind) { const v = U.map((_, u) => aGet(S, u, kind)); const r = U.map((_, u) => 1 + v.filter(x => x > v[u]).length); return {v, r}; }
+const amap = makeMap($('#a-map'), {
+  label: 'Age-adjusted cancer incidence map',
+  onSelect: id => { sel = id; renderAgeSel(); renderCancerSel(); renderFactorSel(); },
+  tip: u => { const S = aS(); return `<b>${esc(U[u].name)}</b>${U[u].borough}<br>${astate.meas === 'aa' ? 'Age-adjusted' : 'Crude'}: ${fmt(aGet(S, u, astate.meas))} /100k<br>${fmt(aGet(S, u, 'cnt'), 0)} cases`; },
+  aria: i => `${U[i].name}: ${fmt(aGet(aS(), i, astate.meas))} per 100,000`
+});
+function trendCI(S, u, yi) {
+  const w = 340, h = 118, p = {l: 34, r: 14, t: 8, b: 18}, lo = S.lo[u], hi = S.hi[u], aa = S.aa[u], cr = S.cr[u], ny = S.nycAA;
+  const all = [...lo, ...hi, ...cr, ...ny], mx = Math.max(...all) * 1.05, mn = Math.max(0, Math.min(...all) * .9);
+  const X = i => p.l + i * (w - p.l - p.r) / 13, Y = v => p.t + (1 - (v - mn) / (mx - mn)) * (h - p.t - p.b);
+  const line = a => a.map((v, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join('');
+  const band = hi.map((v, i) => `${i ? 'L' : 'M'}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join('') + lo.map((v, i) => `L${X(13 - i).toFixed(1)} ${Y(lo[13 - i]).toFixed(1)}`).join('') + 'Z';
+  let s = `<svg class="spark" viewBox="0 0 ${w} ${h}" role="img" aria-label="Age-adjusted rate over time with 95% confidence band">`;
+  [mn, (mn + mx) / 2, mx].forEach(v => s += `<line x1="${p.l}" x2="${w - p.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${p.l - 4}" y="${Y(v) + 3}" text-anchor="end">${Math.round(v)}</text>`);
+  s += `<path d="${band}" fill="var(--accent)" opacity=".15"/><path d="${line(ny)}" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="4 3"/><path d="${line(cr)}" fill="none" stroke="#c0392b" stroke-width="1.4" stroke-dasharray="2 2"/><path d="${line(aa)}" fill="none" stroke="var(--accent)" stroke-width="2.2"/>`;
+  aa.forEach((v, i) => s += `<circle cx="${X(i)}" cy="${Y(v)}" r="${i === yi ? 4.5 : 2}" fill="var(--accent)"><title>${YEARS[i]}: ${fmt(v)} (95% CI ${fmt(lo[i])}–${fmt(hi[i])}), ${S.cnt[u][i]} cases</title></circle>`);
+  [0, 4, 8, 13].forEach(i => s += `<text x="${X(i)}" y="${h - 4}" text-anchor="middle">${YEARS[i]}</text>`);
+  return s + '</svg>';
+}
+const nycAgeCache = {};
+function ageChart(S, u) {
+  const n = 19, w = 340, h = 112, p = {l: 34, r: 8, t: 8, b: 20};
+  const rate = S.ageCnt[u].map((c, a) => c / D.seer.popAge[u][a] * 1e5);
+  if (!nycAgeCache[S.key]) nycAgeCache[S.key] = Array.from({length: n}, (_, a) => { let c = 0, q = 0; U.forEach((_, v) => { c += S.ageCnt[v][a]; q += D.seer.popAge[v][a]; }); return c / q * 1e5; });
+  const ny = nycAgeCache[S.key], mx = Math.max(...rate, ...ny) * 1.08 || 1;
+  const bw = (w - p.l - p.r) / n, X = a => p.l + a * bw, Y = v => p.t + (1 - v / mx) * (h - p.t - p.b);
+  let s = `<svg class="spark" viewBox="0 0 ${w} ${h}" role="img" aria-label="Age-specific rate">`;
+  [0, mx / 2, mx].forEach(v => s += `<line x1="${p.l}" x2="${w - p.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/><text x="${p.l - 4}" y="${Y(v) + 3}" text-anchor="end">${Math.round(v)}</text>`);
+  rate.forEach((v, a) => s += `<rect x="${X(a) + 1}" y="${Y(v)}" width="${bw - 2}" height="${Math.max(0, h - p.b - Y(v))}" fill="var(--accent)" opacity=".85"><title>${D.seer.ageLabels[a]}: ${fmt(v)} /100k (${S.ageCnt[u][a]} cases)</title></rect>`);
+  s += `<path d="${ny.map((v, a) => `${a ? 'L' : 'M'}${(X(a) + bw / 2).toFixed(1)} ${Y(v).toFixed(1)}`).join('')}" fill="none" stroke="var(--muted)" stroke-width="1.6" stroke-dasharray="4 3"/>`;
+  [0, 4, 9, 14, 18].forEach(a => s += `<text x="${X(a) + bw / 2}" y="${h - 5}" text-anchor="middle">${D.seer.ageLabels[a]}</text>`);
+  return s + '</svg>';
+}
+const aTbl = {key: 'rAA', dir: 1};
+function renderAge() {
+  const S = aS(), {br, dec} = aBreaks(S), y = astate.y, M = astate.meas;
+  const aa = aRanks(S, 'aa'), cr = aRanks(S, 'cr');
+  const vals = M === 'aa' ? aa.v : cr.v;
+  amap.paint(vals.map(v => BLUE[classOf(v, br)]));
+  const counts = new Array(7).fill(0); vals.forEach(v => counts[classOf(v, br)]++);
+  const f = v => fmt(v, dec), lab = [`< ${f(br[0])}`, ...br.slice(1).map((b, i) => `${f(br[i])}–${f(b)}`), `${f(br[5])} +`];
+  legend($('#a-legend'), `${S.name}: ${M === 'aa' ? 'age-adjusted' : 'crude'} incidence per 100,000, ${y === 'pool' ? '2010–2023 pooled' : y} · same colour classes for both measures`, lab.map((l, i) => ({c: BLUE[i], t: `${l} (${counts[i]})`})));
+  amap.select(sel);
+  // summary
+  const rho = spearman(cr.v, aa.v), mv = U.map((_, u) => ({u, d: cr.r[u] - aa.r[u]})).sort((a, b) => b.d - a.d);
+  const nm = x => `${esc(U[x.u].name)} (${x.d > 0 ? '+' : '−'}${Math.abs(x.d)})`;
+  $('#a-sum').innerHTML = `<b>What age adjustment changes:</b> crude and age-adjusted rankings correlate at ρ = ${fmt(rho.rho, 2)} (1.00 would mean no change). Moves <i>up</i> the ranking after adjustment: ${mv.slice(0, 3).map(nm).join('; ')}. Moves <i>down</i>: ${mv.slice(-3).reverse().map(nm).join('; ')}.`;
+  // table
+  const rows = U.map((_, u) => ({u, name: U[u].name, b: U[u].borough, aa: aa.v[u], lo: aGet(S, u, 'lo'), hi: aGet(S, u, 'hi'), cr: cr.v[u], cnt: aGet(S, u, 'cnt'), pop: aPop(u), rCR: cr.r[u], rAA: aa.r[u], mv: cr.r[u] - aa.r[u]}));
+  const k = aTbl.key, dir = aTbl.dir; rows.sort((a, b) => (typeof a[k] === 'string' ? a[k].localeCompare(b[k]) : a[k] - b[k]) * dir);
+  const th = (key, t, n) => `<th class="${n ? 'n' : ''}" data-k="${key}" aria-sort="${k === key ? (dir > 0 ? 'ascending' : 'descending') : 'none'}">${t}${k === key ? (dir > 0 ? ' ▲' : ' ▼') : ''}</th>`;
+  $('#a-table').innerHTML = `<thead><tr>${th('rAA', 'Rank (adj.)', 1)}${th('name', 'Neighborhood')}${th('aa', 'Age-adj. rate', 1)}${th('lo', '95% CI', 1)}${th('cr', 'Crude', 1)}${th('cnt', 'Cases', 1)}${th('rCR', 'Rank (crude)', 1)}${th('mv', 'Shift', 1)}</tr></thead><tbody>` +
+    rows.map(r => `<tr class="click${r.u === sel ? ' hl' : ''}" data-u="${r.u}"><td class="n">${r.rAA}</td><td>${esc(r.name)}</td><td class="n">${fmt(r.aa)}</td><td class="n muted">${fmt(r.lo)}–${fmt(r.hi)}</td><td class="n">${fmt(r.cr)}</td><td class="n">${fmt(r.cnt, 0)}</td><td class="n">${r.rCR}</td><td class="n">${r.mv === 0 ? '–' : (r.mv > 0 ? '▲' : '▼') + Math.abs(r.mv)}</td></tr>`).join('') + '</tbody>';
+  renderAgeSel();
+}
+function renderAgeSel() {
+  const box = $('#a-info'), S = aS(); amap.select(sel);
+  document.querySelectorAll('#a-table tbody tr').forEach(tr => tr.classList.toggle('hl', +tr.dataset.u === sel));
+  const yl = astate.y === 'pool' ? '2010–2023 pooled' : astate.y;
+  if (sel == null) {
+    const ny = astate.y === 'pool' ? S.nycAAP : S.nycAA[yIdx()], nc = astate.y === 'pool' ? S.nycCrP : S.nycCr[yIdx()];
+    box.innerHTML = `<h2>Select a neighborhood</h2><p class="small">Click a neighborhood on the map or in the table.</p><dl class="kv"><dt>NYC age-adjusted (${yl})</dt><dd>${fmt(ny)} /100k</dd><dt>NYC crude (${yl})</dt><dd>${fmt(nc)} /100k</dd></dl>
+      <div class="note">Age-adjusted = direct standardisation to the 2000 US standard population (19 age groups), both sexes combined. It removes differences caused only by one neighborhood being older or younger than another.</div>`;
+    return;
+  }
+  const u = sel, aa = aGet(S, u, 'aa'), lo = aGet(S, u, 'lo'), hi = aGet(S, u, 'hi'), cr = aGet(S, u, 'cr'), cnt = aGet(S, u, 'cnt');
+  const ra = aRanks(S, 'aa').r[u], rc = aRanks(S, 'cr').r[u], ny = astate.y === 'pool' ? S.nycAAP : S.nycAA[yIdx()];
+  box.innerHTML = `<div class="unit">${U[u].borough}${U[u].puma ? ' · PUMA ' + U[u].puma : ''}</div><h2 style="font-size:18px;margin:2px 0 8px">${esc(U[u].name)}</h2>
+    <div class="big">${fmt(aa)} <span class="unit">age-adjusted per 100,000 · ${yl}</span></div>
+    <div class="small muted">95% CI ${fmt(lo)}–${fmt(hi)}${hi - lo > aa * .6 ? ' · <b>wide: few cases, interpret with care</b>' : ''}</div>
+    <dl class="kv"><dt>Crude rate</dt><dd>${fmt(cr)}</dd><dt>Cases</dt><dd>${fmt(cnt, 0)}</dd><dt>Population${astate.y === 'pool' ? ' (person-years)' : ''}</dt><dd>${fmt(aPop(u), 0)}</dd>
+      <dt>Rank, age-adjusted / crude</dt><dd>${ra} / ${rc} of 55</dd><dt>vs NYC age-adjusted (${fmt(ny)})</dt><dd>${aa >= ny ? '+' : '−'}${fmt(Math.abs(aa - ny))}</dd></dl>
+    <h3>Trend <span style="text-transform:none;letter-spacing:0;font-weight:400">(blue = age-adjusted with 95% band, red dotted = crude, grey dashed = NYC)</span></h3>${trendCI(S, u, yIdx())}
+    <h3>Rate by age group · 2010–2023 <span style="text-transform:none;letter-spacing:0;font-weight:400">(grey dashed = NYC)</span></h3>${ageChart(S, u)}
+    <div class="small muted">Age adjustment re-weights these bars to one common age profile, so neighborhoods are compared like with like.</div>`;
+}
+$('#a-site').onchange = e => { astate.site = e.target.value; renderAge(); };
+$('#a-year').onchange = e => { astate.y = e.target.value === 'pool' ? 'pool' : +e.target.value; renderAge(); };
+document.querySelectorAll('input[name=a-meas]').forEach(r => r.onchange = () => { astate.meas = r.value; renderAge(); });
+$('#a-table').addEventListener('click', e => {
+  const th = e.target.closest('th'); if (th) { const k = th.dataset.k; if (aTbl.key === k) aTbl.dir *= -1; else { aTbl.key = k; aTbl.dir = (k === 'name' || k === 'rAA' || k === 'rCR') ? 1 : -1; } renderAge(); return; }
+  const tr = e.target.closest('tr[data-u]'); if (tr) { sel = +tr.dataset.u; renderAgeSel(); renderCancerSel(); renderFactorSel(); }
+});
 
 /* ------------------------------------------------------------------ TAB 1 : data browser */
 const CAVEATS = [
@@ -532,23 +753,27 @@ const CAVEATS = [
   '<b>Poverty is a 5-year ACS window</b> (e.g. 2019-23). Windows 2016-20 and 2017-21 are not in the file at PUMA level; the nearest window is used and flagged. Before 2018 the windows are sub-borough based and map to the 2010 PUMA boundaries.',
   '<b>Boundary vintage.</b> The SEER*Stat session file references 2020-defined PUMAs; the maps use the 2010 PUMA boundaries (the geography the 55 workbook neighborhoods follow), with Midtown cut along the CD4 | CD5 line so it matches the workbook.',
   '<b>Rates are crude</b> (not age-adjusted) per 100,000. The "NYC average" row in the lung workbook is the mean of the 55 neighborhood rates, not a population-weighted citywide rate.',
-  '<b>Duplicates.</b> The smoking, poverty and insurance CSVs were uploaded twice, and both Duc workbooks contain the same five data sheets; duplicates are shown once and linked.'
+  '<b>Air quality is published by community district (59), NDVI by UHF34 area</b> (a census-tract NDVI file is also included in the browser, but it is not mapped: no matching 2020 tract boundaries are available here). Each is transferred to the 55 neighborhoods by area overlap. Sulfur dioxide ends in 2016.',
+  '<b>Food environment</b> = USDA SNAP-authorised retailers on 31 December (a proxy for food access, not all stores). <b>Climate</b> = PRISM annual means; PRISM changes its reference climatology in 2021, so jumps around 2021 may be method, not weather.',
+  '<b>Direction in the combined index is an assumption.</b> Greenness, SNAP retailers and supermarkets are treated as protective (high = better), everything else as harmful; toggle any layer if your hypothesis differs.',
+  '<b>The SEER*Stat export is age-specific</b> (PUMA × year × 20 age groups × cancer site, both sexes). Its lung counts and crude rates match the lung workbook exactly for all 770 neighborhood-years, and its all-sites counts equal the Duc "Cancer Incidence (PUMA)" sheet, confirming that sheet is all cancers. Tab 4 age-adjusts these (2000 US standard population). The export had no sex split, so sex-specific sites (breast, prostate, cervix, uterus, ovary, testis) are not shown; re-export with Sex on the Page axis to add them.',
+  '<b>Duplicates.</b> The smoking, poverty and insurance CSVs were uploaded twice, both Duc workbooks contain the same five data sheets, and the PUMA food/climate CSV equals the xlsx \u201cPUMA-year\u201d sheet; duplicates are shown once (the extra CSV copy is not listed). The 40 MB SEER*Stat text export is not embedded; the sheets under \u201cSEER*Stat export (computed here)\u201d hold the lung age-specific data and all computed age-adjusted rates.'
 ];
 $('#caveats').innerHTML = CAVEATS.map(c => `<li style="margin:4px 0">${c}</li>`).join('');
-$('#foot').innerHTML = 'Boundaries: nycehs/NYC_geography (originally NYC Dept. of City Planning). Health data: NYC Health Department Community Health Survey / Environment &amp; Health Data Portal; ACS 5-year estimates; cancer data from the research group\'s SEER*Stat extract and Excel workbooks. Everything in this page is embedded &mdash; it works offline.';
+$('#foot').innerHTML = 'Boundaries: nycehs/NYC_geography (originally NYC Dept. of City Planning). Health and air-quality data: NYC Health Department Community Health Survey / Environment &amp; Health Data Portal; ACS 5-year estimates; USDA SNAP retailer locator and PRISM climate (PUMA file); cancer data from the research group\'s SEER*Stat extract and Excel workbooks. Everything in this page is embedded &mdash; it works offline.';
 const sheetsByKey = D.sheets.map((s, i) => ({...s, i}));
 let dstate = {i: sheetsByKey.findIndex(s => s.sheet === 'Crude Incidence Rates'), q: '', page: 0, sortCol: null, sortDir: 1};
 function renderFlist() {
   const groups = {}; sheetsByKey.forEach(s => (groups[s.file] = groups[s.file] || []).push(s));
   let h = '';
   Object.entries(groups).forEach(([f, arr]) => { h += `<h4>${esc(f)}</h4>` + arr.map(s => `<button data-i="${s.i}" ${s.i === dstate.i ? 'aria-current="true"' : ''}>${esc(s.sheet)}<span class="cnt">${s.same_as ? 'dup' : s.nrows}</span></button>`).join(''); });
-  h += `<h4>SEER*Stat session file</h4><button data-i="ini" ${dstate.i === 'ini' ? 'aria-current="true"' : ''}>Cancer_incidence_read_by_SEERstat.ini</button>`;
+  h += `<h4>SEER*Stat session files</h4>` + D.texts.map((x, j) => `<button data-i="txt${j}" ${dstate.i === 'txt' + j ? 'aria-current="true"' : ''}>${esc(x.name)}</button>`).join('');
   $('#flist').innerHTML = h;
 }
 function sheetBody(s) {
   const rows = s.rows; if (!rows.length) return {head: null, body: [], pre: []};
   const nc = s.ncols;
-  if (s.nrows <= 30) return {head: null, body: rows, pre: [], readme: true};
+  if (s.nrows <= 30 && nc <= 4) return {head: null, body: rows, pre: [], readme: true};
   let hi = rows.findIndex(r => r.filter(v => v != null && v !== '').length >= Math.max(2, Math.ceil(nc * .6)));
   if (hi < 0) hi = 0;
   return {head: rows[hi].map((v, j) => v == null ? 'Col ' + (j + 1) : String(v)), body: rows.slice(hi + 1), pre: rows.slice(0, hi)};
@@ -556,7 +781,7 @@ function sheetBody(s) {
 function toCSV(head, body) { const q = v => v == null ? '' : /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : v; return [head, ...body].map(r => r.map(q).join(',')).join('\n'); }
 function renderSheet() {
   const box = $('#sheetview');
-  if (dstate.i === 'ini') { box.innerHTML = `<h2>Cancer_incidence_read_by_SEERstat.ini</h2><div class="small muted" style="margin-bottom:8px">SEER*Stat session definition used to pull the cancer incidence data (text, as uploaded).</div><pre class="ini">${esc(D.ini)}</pre>`; return; }
+  if (typeof dstate.i === 'string') { const x = D.texts[+dstate.i.slice(3)]; box.innerHTML = `<h2>${esc(x.name)}</h2><div class="small muted" style="margin-bottom:8px">SEER*Stat definition file (text, as uploaded). The ${x.name.includes('dic') ? 'data export itself (40 MB, 1.68 million rows) is summarised in the sheets under "SEER*Stat export (computed here)".' : 'session used to pull the cancer incidence data.'}</div><pre class="ini">${esc(x.text)}</pre>`; return; }
   const s = sheetsByKey[dstate.i];
   if (s.same_as) { const orig = sheetsByKey.findIndex(x => (x.file + ' › ' + x.sheet) === s.same_as); box.innerHTML = `<h2>${esc(s.sheet)}</h2><div class="small muted">${esc(s.file)}</div><div class="note">This sheet is identical to <b>${esc(s.same_as)}</b> (${s.nrows} rows × ${s.ncols} columns).</div><button class="btn primary" id="gooriginal">Open the original</button>`; $('#gooriginal').onclick = () => { dstate.i = orig; dstate.q = ''; dstate.page = 0; dstate.sortCol = null; renderFlist(); renderSheet(); }; return; }
   const {head, body, pre, readme} = sheetBody(s);
@@ -580,21 +805,21 @@ function renderSheet() {
   $('#dpp').onclick = () => { dstate.page--; renderSheet(); }; $('#dnp').onclick = () => { dstate.page++; renderSheet(); };
   $('#dcsv').onclick = () => { const b = new Blob([toCSV(head, rows)], {type: 'text/csv'}), a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = s.sheet.replace(/[^\w]+/g, '_') + '.csv'; document.body.appendChild(a); a.click(); a.remove(); };
 }
-$('#flist').addEventListener('click', e => { const b = e.target.closest('button[data-i]'); if (!b) return; dstate.i = b.dataset.i === 'ini' ? 'ini' : +b.dataset.i; dstate.q = ''; dstate.page = 0; dstate.sortCol = null; renderFlist(); renderSheet(); });
+$('#flist').addEventListener('click', e => { const b = e.target.closest('button[data-i]'); if (!b) return; dstate.i = b.dataset.i.startsWith('txt') ? b.dataset.i : +b.dataset.i; dstate.q = ''; dstate.page = 0; dstate.sortCol = null; renderFlist(); renderSheet(); });
 
 /* ------------------------------------------------------------------ tabs / theme / boot */
 const rendered = {};
 function showTab(t) {
   document.querySelectorAll('#tabs button').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === t));
-  ['data', 'cancer', 'factors'].forEach(n => $('#tab-' + n).hidden = n !== t);
+  ['data', 'cancer', 'factors', 'age'].forEach(n => $('#tab-' + n).hidden = n !== t);
   hideTip(); store('tab', t);
-  if (!rendered[t]) { rendered[t] = 1; if (t === 'data') { renderFlist(); renderSheet(); } if (t === 'cancer') renderCancer(); if (t === 'factors') renderFactors(); }
-  else if (t === 'factors') renderFactors(); else if (t === 'cancer') renderCancer();
+  if (!rendered[t]) { rendered[t] = 1; if (t === 'data') { renderFlist(); renderSheet(); } if (t === 'cancer') renderCancer(); if (t === 'factors') renderFactors(); if (t === 'age') renderAge(); }
+  else if (t === 'factors') renderFactors(); else if (t === 'cancer') renderCancer(); else if (t === 'age') renderAge();
 }
 document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => showTab(b.dataset.tab));
 $('#theme').onclick = () => { const cur = document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light'); const nx = cur === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = nx; store('theme', nx); };
 { const th = store('theme'); if (th) document.documentElement.dataset.theme = th; }
-const h = location.hash.replace('#', ''); showTab(['data', 'cancer', 'factors'].includes(h) ? h : 'cancer');
+const h = location.hash.replace('#', ''); showTab(['data', 'cancer', 'factors', 'age'].includes(h) ? h : 'cancer');
 </script>
 </body>
 </html>
