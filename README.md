@@ -46,6 +46,13 @@ The table's "PUMA Code" (0–54) is a running index, not the Census PUMA code; u
 
 ## Interactive explorer
 
-`outputs/NYC_Environment_Cancer_Explorer.html` is a single offline page (open it in any browser): a data browser for all workbooks/CSVs, the 14 yearly lung-cancer incidence maps with click-for-details, and a layered smoking / poverty / uninsured map with a combined burden index.
+`outputs/NYC_Environment_Cancer_Explorer.html` is a single offline page (open it in any browser) with four tabs:
+
+1. **Data browser** – every sheet of the Excel workbooks, the smoking / insurance / NDVI / air-quality CSVs, the food-environment & climate PUMA file, and computed SEER*Stat summaries (searchable, sortable, CSV download).
+2. **Cancer incidence maps** – the 14 yearly lung maps (plus pooled average) with click-for-details; crude or age-adjusted rates, lung or any of 19 sites.
+3. **Factor layers** – 15 layers (smoking, poverty, uninsured, NDVI, six air pollutants, SNAP retailers, supermarkets, convenience stores, three climate variables) that can be switched on and off; one layer shows its raw value, several show a weighted combined burden index. Correlation panel compares crude and age-adjusted lung incidence.
+4. **Age-adjusted incidence** – direct age standardisation (2000 US standard population, both sexes) of the SEER*Stat PUMA export with 95% CIs (Fay-Feuer), crude vs adjusted ranks and age-specific curves.
+
 Rebuild with `scripts/web/build_data.py` then `scripts/web/assemble.py` (paths at the top of `build_data.py` point at the source files and need adjusting on your machine).
-Caveats: smoking and insurance are UHF34-level and are transferred to the 55 neighborhoods by area overlap (approximate); the Duc workbooks' cancer sheet is all cancers, not lung.
+
+Caveats: smoking, insurance and NDVI are UHF34-level and air quality is community-district-level; both are transferred to the 55 neighborhoods by area overlap (approximate). The Duc workbooks' cancer sheet is all cancers, not lung. The SEER*Stat export has no sex split, so sex-specific sites are not shown.
