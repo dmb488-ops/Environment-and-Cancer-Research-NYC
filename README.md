@@ -23,6 +23,8 @@
 | `scripts/analysis/` | The factor-selection analysis: `build_tables.py`, `run_analysis.py`, `export_summaries.py`, `stats_lib.py`, `ml_lib.py`, `theory.py` |
 | `scripts/web/` | `template.html` and `assemble.py` (and `build_data.py`) that build the explorer page |
 | `docs/` | `Factor_Selection_Methods.md`: methods, results and cautions of the factor-selection analysis |
+| `outputs/Factor_Selection_Methods.docx` / `.pdf` | The same document as Word and PDF (charts included), ready to share or print |
+| `outputs/figures/` | PNG copies of the two factor-selection charts (prediction by feature set, permutation importance) |
 | `data/` | Raw data files. Kept out of git (see `.gitignore`) |
 
 ## Maps
@@ -68,7 +70,7 @@ Caveats: smoking, insurance and NDVI are UHF34-level and air quality is communit
 
 ## Factor-selection analysis (preliminary, for group review)
 
-Which environmental factors matter most for lung cancer incidence across the 55 neighborhoods? The full explanation (plain-language multicollinearity primer, theory table, every method and why, results, cautions) is in [`docs/Factor_Selection_Methods.md`](docs/Factor_Selection_Methods.md); the results are also browsable in tab 5 of the explorer.
+Which environmental factors matter most for lung cancer incidence across the 55 neighborhoods? The full explanation (plain-language multicollinearity primer, theory table, every method and why, results, cautions) is in [`outputs/Factor_Selection_Methods.pdf`](outputs/Factor_Selection_Methods.pdf) (also `.docx`, and [`docs/Factor_Selection_Methods.md`](docs/Factor_Selection_Methods.md) as markdown); the results are also browsable in tab 5 of the explorer.
 
 **What was done**
 - 16 candidate factors (smoking, poverty, no insurance, NDVI, six air pollutants, three food-environment, three climate) against age-adjusted lung cancer incidence, in two designs: between the 55 neighborhoods (2010–2023 averages) and an annual panel (55 × 11 years, 2012–2022).
