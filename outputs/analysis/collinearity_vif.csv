@@ -1,0 +1,17 @@
+factor,vif_all_16,kept_in_core_set,vif_core_set,reason_dropped
+PM₂.₅,60.22,True,1.99,
+NO₂,55.64,False,,near-duplicate of PM₂.₅ (|rho| >= 0.85); PM₂.₅ has the stronger scientific case
+Black carbon,52.0,False,,near-duplicate of PM₂.₅ (|rho| >= 0.85); PM₂.₅ has the stronger scientific case
+Ozone (O₃),42.06,False,,variance inflation factor 8.7 (>= 5) within the core set
+SNAP retailers,35.42,False,,near-duplicate of Convenience stores (|rho| >= 0.85); Convenience stores has the stronger scientific case
+NO,23.09,False,,near-duplicate of PM₂.₅ (|rho| >= 0.85); PM₂.₅ has the stronger scientific case
+Convenience stores,19.06,True,4.78,
+Supermarkets,11.4,True,4.02,
+Summer max temp.,10.71,False,,No established mechanism; only 16% of its variation is between neighborhoods.
+SO₂,9.66,False,,"Data end in 2016 (7 of 14 years), so it cannot be used in the annual panel; weak mechanism; collinear with the other air pollutants."
+Mean temperature,9.03,False,,No established mechanism; only 9% of its variation is between neighborhoods (the rest is year-to-year weather shared by the whole city).
+Greenness (NDVI),7.12,True,1.77,
+Precipitation,5.63,False,,No plausible mechanism; only 1% of its variation is between neighborhoods. Kept in the machine-learning models as a negative control.
+Poverty,4.58,True,3.3,
+Smoking,3.21,True,1.62,
+No insurance,2.7,True,1.5,

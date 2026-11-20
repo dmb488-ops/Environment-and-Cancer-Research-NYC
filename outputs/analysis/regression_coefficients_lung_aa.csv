@@ -1,0 +1,17 @@
+factor,ols_core_beta_rate_points_per_SD,ols_core_p,ols_adjusted_for_smoking_beta,ols_adjusted_for_smoking_p,poisson_core_rate_ratio_per_SD,poisson_core_p,panel_fixed_effects_beta,panel_fixed_effects_p
+Smoking,6.83,0.0,5.27,0.0,1.172,0.0,0.01,0.9736
+Poverty,-1.85,0.2579,-3.47,0.0006,0.963,0.2228,2.0,0.2957
+No insurance,-2.23,0.0083,-3.29,0.0001,0.948,0.0062,-0.53,0.2415
+Greenness (NDVI),0.6,0.5569,1.2,0.2632,1.006,0.7842,-1.42,0.2568
+SO₂,,,-1.58,0.1075,,,,
+Ozone (O₃),,,-0.59,0.4687,,,,
+NO₂,,,-0.56,0.6579,,,,
+NO,,,-0.82,0.5179,,,,
+PM₂.₅,-0.21,0.8371,-0.35,0.7606,1.007,0.7331,1.22,0.3888
+Black carbon,,,-0.4,0.6918,,,,
+SNAP retailers,,,-2.44,0.0162,,,,
+Supermarkets,1.02,0.5081,-1.02,0.3587,1.022,0.4709,2.24,0.2088
+Convenience stores,-1.0,0.5979,-2.63,0.0138,0.982,0.6268,-2.12,0.2775
+Mean temperature,,,-0.86,0.3406,,,,
+Summer max temp.,,,0.21,0.8049,,,,
+Precipitation,,,1.07,0.2267,,,,
