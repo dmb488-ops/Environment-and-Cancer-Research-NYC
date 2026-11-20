@@ -1,0 +1,27 @@
+outcome,features,model,cv_r2_random_5fold,cv_r2_leave_one_borough_out
+"lung, age-adjusted","Neighborhood location only (x, y coordinates)",Random Forest,0.233,0.062
+"lung, age-adjusted",Smoking only,OLS,0.364,0.302
+"lung, age-adjusted",Poverty + no insurance,OLS,0.027,-0.009
+"lung, age-adjusted",Smoking + poverty + no insurance,OLS,0.542,0.542
+"lung, age-adjusted","Environment only (13 greenness, air, food, climate factors)",Random Forest,0.154,-0.001
+"lung, age-adjusted","Environment only (13 greenness, air, food, climate factors)",Ridge,0.097,-0.618
+"lung, age-adjusted",Core set (7 factors),OLS,0.475,0.33
+"lung, age-adjusted",All 16 factors,OLS,0.067,-1.065
+"lung, age-adjusted",All 16 factors,Ridge,0.47,0.167
+"lung, age-adjusted",All 16 factors,Elastic Net,0.426,0.081
+"lung, age-adjusted",All 16 factors,Random Forest,0.314,0.206
+"lung, age-adjusted",All 16 factors,Gradient Boosting,0.527,0.379
+"lung, age-adjusted",All 16 factors without smoking,Random Forest,0.157,0.007
+"all sites, age-adjusted","Neighborhood location only (x, y coordinates)",Random Forest,0.389,0.108
+"all sites, age-adjusted",Smoking only,OLS,0.092,-0.102
+"all sites, age-adjusted",Poverty + no insurance,OLS,0.239,0.111
+"all sites, age-adjusted",Smoking + poverty + no insurance,OLS,0.485,0.369
+"all sites, age-adjusted","Environment only (13 greenness, air, food, climate factors)",Random Forest,0.337,-0.173
+"all sites, age-adjusted","Environment only (13 greenness, air, food, climate factors)",Ridge,-0.045,-0.921
+"all sites, age-adjusted",Core set (7 factors),OLS,0.416,0.228
+"all sites, age-adjusted",All 16 factors,OLS,0.169,-0.734
+"all sites, age-adjusted",All 16 factors,Ridge,0.435,-0.105
+"all sites, age-adjusted",All 16 factors,Elastic Net,0.327,-0.181
+"all sites, age-adjusted",All 16 factors,Random Forest,0.388,-0.079
+"all sites, age-adjusted",All 16 factors,Gradient Boosting,0.52,0.119
+"all sites, age-adjusted",All 16 factors without smoking,Random Forest,0.365,-0.14
